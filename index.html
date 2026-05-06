@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#002868">
 <meta name="referrer" content="no-referrer-when-downgrade">
+<!-- Allow Experience Builder (and other parents) to embed this app in
+     an iframe. Browsers ignore CSP in <meta>, but it documents intent
+     and matches the pattern used in the shelter app. -->
+<meta http-equiv="Content-Security-Policy" content="frame-ancestors *">
+<script>
+  // Apply embed layout immediately to avoid a flash of the wrong sizing.
+  // Usage: append ?layout=full to the URL in the Experience Builder
+  // embed widget so the app stretches to fill the iframe.
+  (function() {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('layout') === 'full') document.documentElement.classList.add('layout-full');
+  })();
+</script>
 <title>Critical2TN</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
@@ -26,6 +39,8 @@
   #app { display: flex; flex-direction: column; height: 100%; min-height: 100vh; max-width: 480px; margin: 0 auto; background: var(--bg); }
   /* App is hidden until the user is signed in */
   #app[hidden] { display: none !important; }
+  /* ?layout=full — embed mode: stretch to fill the iframe container */
+  .layout-full #app { max-width: 100%; margin: 0; }
 
   /* ── Login screen ────────────────────────────────────────── */
   #login-screen {
@@ -626,7 +641,20 @@ function _tokenFromResponse(data) {
   };
 }
 
-// ── OAuth flow: kick off the authorize redirect ──────────────────
+// Detect whether the app is loaded inside an iframe (e.g. Experience
+// Builder). Uses a try/catch because cross-origin parents throw when
+// you read window.top in some browsers.
+function isInIframe() {
+  try { return window.self !== window.top; } catch { return true; }
+}
+
+// ── OAuth flow: kick off the authorize step ──────────────────────
+//   • Standalone (regular tab): redirect the whole page.
+//   • Embedded in an iframe (Experience Builder): redirect inside the
+//     iframe would be blocked because AGOL's login page sets
+//     X-Frame-Options. Instead, we open a popup window, let it complete
+//     the OAuth dance at top-level, and pipe the auth code back via
+//     postMessage so the iframe app can finish the token exchange.
 async function startOAuthFlow() {
   try {
     const verifier  = _randomString(48);
@@ -643,11 +671,71 @@ async function startOAuthFlow() {
       expiration:            String(CONFIG.tokenExpirationMinutes),
       state,
     });
-    window.location.href = `${CONFIG.authorizeUrl}?${params}`;
+    const authUrl = `${CONFIG.authorizeUrl}?${params}`;
+    if (isInIframe()) {
+      await runOAuthInPopup(authUrl);
+    } else {
+      window.location.href = authUrl;
+    }
   } catch (err) {
     console.error('OAuth start failed:', err);
     setLoginError('Could not start sign-in. ' + (err.message || ''));
   }
+}
+
+// Open a popup window for the OAuth flow and wait for the auth code via
+// postMessage. The popup is the redirect_uri target — when AGOL
+// redirects it back with `?code=…`, the popup's own startup code (in
+// handleOAuthCallback) detects it's a popup and posts the result here.
+function runOAuthInPopup(authUrl) {
+  return new Promise((resolve, reject) => {
+    const w = 540, h = 720;
+    const left = Math.max(0, (screen.width  - w) / 2);
+    const top  = Math.max(0, (screen.height - h) / 2);
+    const popup = window.open(
+      authUrl, 'critical2tn_oauth',
+      `width=${w},height=${h},left=${left},top=${top},toolbar=0,menubar=0,scrollbars=1`
+    );
+    if (!popup) {
+      setLoginError('Popup was blocked — please allow popups for this site, then try again.');
+      return reject(new Error('popup blocked'));
+    }
+    let settled = false;
+    const cleanup = () => {
+      window.removeEventListener('message', onMessage);
+      clearInterval(closedTimer);
+    };
+    const onMessage = async (event) => {
+      // Strict origin check — only accept messages from the same origin
+      // (the popup is on the same origin since it's our redirect_uri).
+      if (event.origin !== window.location.origin) return;
+      if (!event.data || event.data.type !== 'critical2tn_oauth') return;
+      settled = true;
+      cleanup();
+      if (event.data.error) {
+        setLoginError(event.data.error_description || event.data.error);
+        return reject(new Error(event.data.error));
+      }
+      try {
+        const tok = await exchangeCodeForToken(event.data.code);
+        saveToken(tok);
+        hideLogin();
+        startApp();
+        resolve(tok);
+      } catch (err) {
+        setLoginError(err.message || 'Sign-in failed.');
+        reject(err);
+      }
+    };
+    window.addEventListener('message', onMessage);
+    // Treat closing the popup before completion as cancellation
+    const closedTimer = setInterval(() => {
+      if (popup.closed && !settled) {
+        cleanup();
+        reject(new Error('Sign-in cancelled'));
+      }
+    }, 500);
+  });
 }
 
 // ── OAuth flow: exchange the authorization code for tokens ──────
@@ -740,17 +828,44 @@ function confirmLogout() {
 
 // Handle the OAuth redirect callback. Returns true if we consumed a
 // `?code=...` from the URL, false if the page loaded normally.
+//
+// Two modes:
+//   • Popup mode (window.opener exists): we're the popup that AGOL
+//     just bounced back to with the auth code. Send the code to the
+//     opener (the embedded app) via postMessage and close the popup.
+//   • Top-level mode: we're the standalone app — exchange the code
+//     ourselves and proceed.
 async function handleOAuthCallback() {
   const url = new URL(window.location.href);
-  const code = url.searchParams.get('code');
+  const code  = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
+  if (!code && !error) return false;
+
+  // Popup branch — relay to opener and close.
+  if (window.opener && window.opener !== window) {
+    try {
+      window.opener.postMessage({
+        type:               'critical2tn_oauth',
+        code,
+        state,
+        error,
+        error_description:  url.searchParams.get('error_description') || null,
+      }, window.location.origin);
+    } catch (e) { console.error('postMessage to opener failed:', e); }
+    // Give the parent a tick to receive the message, then close
+    setTimeout(() => { try { window.close(); } catch {} }, 50);
+    // Show a brief "you can close this" message in case window.close fails
+    document.body.innerHTML = '<div style="font-family:DM Sans,sans-serif;padding:40px;text-align:center;color:#333">Sign-in complete. You can close this window.</div>';
+    return true;  // don't continue normal app boot
+  }
+
+  // Standalone branch — exchange the code in this same page.
   if (error) {
     setLoginError(`Sign-in error: ${url.searchParams.get('error_description') || error}`);
-    history.replaceState({}, '', url.pathname); // strip the error params
+    history.replaceState({}, '', url.pathname);
     return false;
   }
-  if (!code) return false;
   // CSRF check — the state we sent must match what came back
   const expectedState = sessionStorage.getItem('oauth_state');
   if (expectedState && state !== expectedState) {
@@ -761,7 +876,6 @@ async function handleOAuthCallback() {
   try {
     const tok = await exchangeCodeForToken(code);
     saveToken(tok);
-    // Strip the code/state from the URL so a refresh doesn't try to reuse them
     history.replaceState({}, '', url.pathname);
     return true;
   } catch (err) {
