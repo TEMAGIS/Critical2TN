@@ -360,6 +360,1837 @@
       </svg>
       Sign in with ArcGIS Online
     </button>
+    <a id="oauth-fallback" href="#" target="_blank" hidden
+       style="display:block;text-align:center;font-size:12px;color:var(--text3);margin-top:10px;text-decoration:underline;cursor:pointer">
+      Sign-in didn't open? Open in a new tab
+    </a>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MAIN APP — hidden until login completes
+     ════════════════════════════════════════════════════════════ -->
+<div id="app" role="application" aria-label="Critical2TN map" hidden>
+  <header id="header" role="banner">
+    <div class="header-top">
+      <div class="app-title">
+        <svg class="tn-badge" viewBox="0 0 100 100" role="img" aria-label="Tennessee state logo">
+          <rect x="0" y="0" width="100" height="84" fill="#D22730"/>
+          <rect x="0" y="84" width="100" height="5" fill="#ffffff"/>
+          <rect x="0" y="89" width="100" height="11" fill="#002868"/>
+          <text x="50" y="70" text-anchor="middle" textLength="86" lengthAdjust="spacingAndGlyphs"
+                font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="74"
+                fill="#ffffff">TN</text>
+        </svg>
+        <h1 class="app-title-text">Critical2TN</h1>
+      </div>
+      <div class="header-pills">
+        <button class="header-pill" onclick="requestLocation()" aria-label="Use my location">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          <span id="loc-label">Locate</span>
+        </button>
+        <button class="header-pill icon-only" onclick="confirmLogout()" aria-label="Sign out" title="Sign out">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <label for="search-input" class="sr-only">Search assets</label>
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="search-input" type="search" placeholder="Search by name, city, county, sector…" oninput="onSearch()" aria-label="Search assets" autocomplete="off">
+    </div>
+    <div id="loading-bar" role="progressbar" aria-label="Loading" style="display:none;height:3px;background:rgba(255,255,255,0.3);border-radius:2px;overflow:hidden;margin-bottom:2px">
+      <div style="height:100%;width:40%;background:white;border-radius:2px;animation:loadbar 1.2s ease-in-out infinite"></div>
+    </div>
+  </header>
+
+  <div id="offline-banner" class="offline-banner" hidden>
+    Showing cached data — connection unavailable. <button onclick="fetchAssets()" style="background:none;border:none;color:#6b4200;font-weight:700;text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit">Retry</button>
+  </div>
+
+  <div id="map-container" role="region" aria-label="Map showing infrastructure asset locations">
+    <div id="map"></div>
+    <button id="fab-locate" onclick="recenterOnUser()" title="Re-center on my location" aria-label="Re-center on my location">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    </button>
+  </div>
+
+  <main id="list-section" aria-label="Infrastructure assets">
+    <div class="list-controls">
+      <div class="list-header">
+        <div>
+          <div class="list-count" id="list-count" aria-live="polite">Loading…</div>
+          <div id="last-refreshed" aria-live="polite"></div>
+        </div>
+        <div class="header-actions">
+          <button id="filter-toggle-btn" class="filter-btn" onclick="toggleFilterDrawer()" aria-expanded="false" aria-controls="filter-drawer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+            Filter
+          </button>
+          <button class="sort-toggle" id="sort-label" onclick="toggleSort()" aria-label="Toggle sort">📍 Nearest</button>
+        </div>
+      </div>
+      <div class="active-filters" id="active-filters" aria-label="Active filters" aria-live="polite"></div>
+      <div id="filter-drawer" aria-hidden="true" inert>
+        <nav id="filter-grid" aria-label="Filter assets by community lifeline"></nav>
+      </div>
+    </div>
+    <div id="asset-list" role="list" aria-label="Asset results"></div>
+  </main>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     DETAIL SHEET
+     ════════════════════════════════════════════════════════════ -->
+<div id="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-asset-name" hidden>
+  <div id="detail-overlay" onclick="closeDetail()"></div>
+  <div id="detail-content">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <button class="sheet-close-btn" onclick="closeDetail()" aria-label="Close details">×</button>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     LIGHTBOX (for attachment images)
+     ════════════════════════════════════════════════════════════ -->
+<div id="lightbox" hidden onclick="closeLightbox()">
+  <button class="close" onclick="closeLightbox()" aria-label="Close image">×</button>
+  <img id="lightbox-img" alt="">
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  CONFIG  — OAuth 2.0 authorization-code-with-PKCE flow
+//  ─────────────────────────────────────────────────────
+//  clientId comes from the AGOL app registration. redirectUri must
+//  exactly match one of the redirect URIs configured for that app
+//  (including the trailing slash, if any).
+//
+//  The app uses PKCE so no client_secret is needed — that's the
+//  whole point of registering the AGOL app as a Native Application.
+//
+//  When the access token expires (~2h) we silently use the refresh
+//  token to get a new one. The refresh token itself lasts up to
+//  14 days; once that expires the user has to sign in again.
+// ════════════════════════════════════════════════════════════════
+const CONFIG = {
+  serviceUrl:   'https://services1.arcgis.com/kILp9lqGUeOhnDbI/ArcGIS/rest/services/CIKR_TN_OHS_View/FeatureServer/0',
+  // OAuth 2.0
+  clientId:     'tP3hyVsfaw5Am3BF',
+  redirectUri:  'https://temagis.github.io/Critical2TN/',
+  authorizeUrl: 'https://www.arcgis.com/sharing/rest/oauth2/authorize',
+  tokenUrl:     'https://www.arcgis.com/sharing/rest/oauth2/token',
+  signOutUrl:   'https://www.arcgis.com/sharing/rest/oauth2/signout',
+  // Refresh-token lifetime in MINUTES (max 20160 = 14 days).
+  tokenExpirationMinutes: 20160,
+  // Refresh the access token this many ms before it actually expires.
+  refreshBufferMs: 5 * 60 * 1000,
+  // Auto-refresh of the asset list (set to 0 to disable).
+  refreshInterval: 5 * 60 * 1000,
+  // Storage keys
+  tokenKey:    'cikr_token_v2',
+  cacheKey:    'cikr_cache_v1',
+};
+
+// ════════════════════════════════════════════════════════════════
+//  FIELD MAPPING — exact names from CIKR_TN_OHS_View/FeatureServer/0
+// ════════════════════════════════════════════════════════════════
+const FIELDS = {
+  objectId:     'OBJECTID',
+  name:         'asset_name',
+  hsipId:       'hsip_id',
+  lat:          'latitude',
+  lng:          'longitude',
+  address:      'address',
+  city:         'city',
+  state:        'state',
+  zip:          'zip',
+  county:       'county',
+  region:       'region',
+  assetType:    'asset_type',
+  lifeline:     'lifeline',
+  component:    'component',
+  subcomponent: 'subcomponent',
+  sector:       'sector',
+  contactName:   'contact_name',
+  contactAgency: 'contact_agency',
+  contactPhone:  'contact_phone',
+  contactEmail:  'contact_email',
+};
+
+// ════════════════════════════════════════════════════════════════
+//  COMMUNITY LIFELINES — FEMA's 8 categories
+//  Used as the primary filter pills. Colors picked for WCAG AA on
+//  white card surfaces (≥4.5:1). Icons inline so we stay self-
+//  contained — no external image fetches, works offline.
+// ════════════════════════════════════════════════════════════════
+// Image data URIs for the 8 FEMA Community Lifeline icons (WebP @ 96px).
+// Embedded inline so the app stays self-contained — no external requests,
+// works offline. Source: FEMA Community Lifelines Toolkit.
+const ICON_URLS = {
+  safety: 'data:image/webp;base64,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',
+  food: 'data:image/webp;base64,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',
+  health: 'data:image/webp;base64,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',
+  water: 'data:image/webp;base64,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',
+  energy: 'data:image/webp;base64,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',
+  comms: 'data:image/webp;base64,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',
+  trans: 'data:image/webp;base64,UklGRsgPAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSDMEAAABoG3btmlJmhvpLNu2bds20rbzvWzbtm1baWeWjagoRsRZa82H0L3nrA+IiAlAvWMOALDugeNufP7zrxr+V/2/4avPn79x3IHrAkDIEVUOKQJY+7RrP/6dNfz985vOWhtATKEqIQPYeMzr/5KkqYiatTJTETWS/Pet8RsDSKEKIQFdj3vif5JSqLGGpoWQbHrmhG5ACqVLQO/h00gWYqyjSUFy5silgVSuGNFtxCJSxVh3EyWXjOqGGEuUgONmkKIsqQo541gglSUkrPsQKcoSq5APr4sUShGBs3+jKkuuyt/6AbEECUvdRQorKORdSyHVLWPLLyjGSppw2pbIdco45HcWrGzB3w9FrktCnxYKKyxs6YNch4yhNGWl1TgcuWYZwyjGiptyOHKNMvpSjJU3YR/kmiQcUqjRQVM5BKkGEVv8YUoX1f7YHLFTIS41i0InhTOXirEzGfeyoJvCe5E7kdCXBR0t2BepQzGs06DqiWrDOiF2JOEpCl0VPonUgYTjKHRWeCxSOyH2nG/qjdq8njG0lTCGQneFo5HaCGGZ70z9Uft2mRBaJYyl0GHhWCQAIfRYYOqR2oIeIQAJJ1LpsvJEJCDiRROfxF5ARMTGzWY+mTVthJgxmQWdLjgJOcT3KV4J34sB6zXRvDI2rQv0pdBt4dnAbSz8KngL0jSqX8ppaYNGml/GxvUPpdFx4yGTqZ4pJ95C8Ux400vevTSN6ply2jc0z4xfN3rX2ETn/1fvRNz7z7v//qB5Zvx9sXeLPqV6pvzkaYpnwqeu9u6q4VTPlEP3NvOMttdqv9L8Mv6yKt6j+qV8F7jCCr8Kuww4huqX8mhgpT9pXhkbVkTEsyZeiT2NmNGPfrEPcsQqDTSfjH+sjIiEO1n4VPAOJCBhL6pPyj1bIYT3TTwSeydEAEg4keoSj0dqhdjlCxN/xD7NEW0mHEuPeDRSW4jhTYo3wldDRHvYUcR8MWnZFh1AwpUUXwpehIQOhrjUEqonyrm9YugIEvalmB8mxW5I6HjGOWzxo4VTkdDJkOLLLLwo+CgyOh2x4iKKD8IZy8TQOSRs3Uj1QPjDeoioZcYBTabVEzbuiITaZhyt1KoJ/9kXGbXOOK6ZUi1hwz7IqH3GIX9TqlTw252RUc+Mnb5kS2Ws4GfrIqG+GWu9SdFqKPnAUkiod0LXK8miAlaweSIQUf8IHPstVcsm5Oe7IgaUMSSsehspWiZVNp/bAwllTcAhH5GiZREhn9kWSChvSIiD55EqVj8TI987EkgBpU5Az8GfkSzE6mEiJF89PiBGlD0kIB/35P8kpVCrhWmhJH+5ZQ8ACVUMGcBGY974jyRNRdTaMFMRZevfnuqzEhASqhpSBLD26dd91sAa/vjBZUevAiAlVDrmAADrHzLh1henffN3s2nTn4s/eerawXuvAgApB9QbAFZQOCBuCwAAEC8AnQEqYABgAD5RJI5FI6IhFcsUhDgFBLYG25J/lQL8dz4F2O6/kL7Pli/qPjV69OnPL06D873989QH6W9gD9bvSx6C/MR9s3vH/6P1X/2z1Ef651IPoAdKf/Z/+thG38i7T/7d+OniR+l/uH5Kcvh6D7efiPzI9ku9/gBfjP8c/vP5BfmBx8wAPyD+gf4/+pftd/b/Sy1O+qr3AP1L/zPlDeANQD/kH9J/zP9p/bH/HfS3/Qf9X7w/bL+Yf5f/o/5L4A/5T/P/9P/df8Z+zvzUezj9ufZC/ZJX38BiYF/8NoFif28/k54HMy4yhGQcXh3Oj6dNYdkHC15uw5S0Ylm4Z+d1/gTsdRaq9rFSHvfW8YvIU4ta/qf/HDbY6vXpCcqw1NaJSapZXhcdmuUb2noe/juOznKtlhegFFXLZHojBFE4IBaybFPc/v04JEpfhGZEBl2tbAc7QfkKabpivSLSykXmjnNIH3sBj8HGjB3Ha3/yFcpm/yP5KmrBf3rsQAD+/4YWLX6/jlSWmveHqP14f1t4vyRysLaMOIXNV1hsKfT0Jl5UHSvhZ2ZcEhJbLktDHzKOFx+5ePKylXz725cEEowJ3H2tMamqiPRcZHSvFmz7g000l521FiC9sHVguiabRJ7HGU76eqs3ewWk2I8t09Cda9WtGdj+zThThemrVYPz2SyLjBQMgdYzrx2jwpNeeuL43ptUNe2/zIIobm+6ospQ2Cz7We2l2Mz3jN2stWqC5zpBSlCSxRlOYVf/zfJeOJ/yKECHXzcEK+p4ZiwJMFAlekItHSkqM2RXQR9v52dvQUkvLUX+AtTo53SCZxB1sFzK3rIdL9dTfoINjBwnQ71KNa1m+3w1Czb+1zaDsCTUcguHp3hs9Cxt/tafnsX0tLylls09dgGBMYA+lMeHc71PIWg4Xeinr0nhFwkWkLcPWZB7be+28lqflB/3okhLyRp8wXbeOHk5mkjv5qNPdfpcfqjtfofRho4E0HyViKhpb1eu4zk4LMPuzKS4mP8g0M+urZHKwDUp/63Uzc05sjgSFwKSlTcvUmjSabv+Avd0vbg6yYX2xRGZyC6x0mdN1P2G6wfr5AzLA1ZvU/6145v0vAnYkmCTElpwW7keJxkgBBGfFbqWzpWK0A+M4G9/G3acm2mFOiqQ/93Dsgp3kOY3tzPusTNDfHmSRmpDVdQJihT99EB1I0RrJ2Tw0gwrK6tYSr+7SFxMEyt4YJV7dtImfInTPmMs/1GUDRGp3FpDH14aW+wegrjW9DIskjkImeLMR+cTiP4ojXj1nQJC2b8dcXcrMvDXeO1KYqtld1WFf0s+HKWi4rgUeWFUdI7IFGGelKiIJ/KJLkUmzbNBmQ7RW4ujNBnP2JASkgljfLLp/BPMNPwiRBl19YGs1OptVKMQXhs3zVoYcLf7Sn+bwUmOzwQnuOfADLWhp/q0KOQoj+An3ABiu0D0rfbsNuQ4S+4UeH+eT3JRqbxyhccW4L6xiqJHGiR4HlgXM9g4gHUqDvMh1U48IkSVznUH/PolU24KPzVr0NUSwW4TXlC41aruYTSJCvUEvno49wSOzCMh7TaEiPPHmKA1tS/RuIUz/63l1ns598FxkuiSp4p9YYsozEH/8EdZPLD8dzZwsO+vHXxpjRl0dL0325ZBlFQnNBavSML2ua5p9aDFdb9F3dt4vmK7oRDziVFD8XISN3pwV6iS/l/aroShAKxYQaDHedLpkSzoIUJVx27jJi31Jkf7rzmNYkxAR6kLM3ob+GMqHe4OhML5GQovcVOVevVvRY78uaU841fMSHDgi96sd4HuggV7g1CX2vxyJb3hGY0PP963wEtfo0rVIs+ta8zLTNlN1y4PaeDepqGo9JybjZwXeP6uDj3zftYY1CHpJqvNBe8aPC/jhQ4S60i22Byb7zxRXMw99koPIrH3Y6VOXgVF48Yn+tBUOiPErBMGQAW5jMy+RdnmsC/P5rzU2XOR2GykFVUFvIfvcE0cE5W/UvEtoOyEz8ii30uRYkFnFcKbDPAvKn5kYIxMgdxmS9+J4r+uwkqf4jM7JxIrvKjryGBK2gcVUC2OTpXyLHDVrHWyAIr3UAdJ09SS2fx4h4d5dJaLwq95eCz/Q8YI+ivnXA797pFKZ7yQAPr+BhpPh5A9KO7Tfs+UVJgB+mQlZsFVVQ+sCAjAT3WvL3gxokN3BCsh2VB31LvVT81Ms00ryZwVSrn8M2XieVm9aH8ekqdPCVZUd/5tnlWoUg8K0oFeIDNcJzoPbwKlt6YDpSiDVuJfKojPfWOnPqYBGGy/8oJxn0DHQTJuJW73i/43ppvuuMl1FwqGkOOCl3rduZ0PwFdQRIwry2x2QY3M76q/FzXAUA1NKUNp2b+X9I5Wfb9JIJYNZd6T2LfGB+7swEtxJsDUBFggPXOf/jmbCT7hBI/wvOg4eX4B4O3sRb6Qa3S0M52sSFyRLygNwPsVFLavwCE4aw+AHoLD3UQvkXZ9dKKuM4jknRxyMtcnpCz7iXHnGujAiJfxcuwAMTTgQlK5Iepm6YNT32gH+hzTYUNgRXN+Qz0kzFlqK5qW5NduW+gbp89Ugl9CaDWBLWVbjAqGcgS+2QSn56ZxPOJlF3RiHMtcKIm6hnDdx28iqhsX9WOtKKlz6LZqLRKbcib8rMKtLFJ9j3RkdjMuc5Zvj9d/3wvIhOuirSxj/ptgjqSzRjdD638K4CEetXIMONa0UrhHBiBqVRyWBpGOQDnvJZ9bih1eabTj/22/PqB+JUDgxKfy9rOqH1TTtiMDaJtNXmR2/i8M36SxEL9D/+dlEt5mCTHgiD7eWfX4wE68C23novgdHCp1rrwPaTtKoK4N8ecr6M5HqKGeIANqr/0K+TQ7uv78SBuH3lsMfGa8rUVLWZGZ3dq6lPDlpyYyT9md43FSRIFjNzd3K/uo6hRKban5+vGLNAd0bJM+zV1x/reFvtABZz0ytAGLsXRi53zVrJ/VvMBtmLtquMoetQY+740ImKQ/0CLkkwGwCMc58PHzju8PAEugzHKBtZ2R9vjZZBZMMsAgXASlW8RoCTRyGd0Nl187ahHHP3q5DqXnrG0fsRiN0U9Pv7+HOzFqe8OdgS1B5ri2DbrN77GF9VIvO+QYNBBnAAGJujvQHifVk/LxyOBw8rnH6M6CfQNFyJyhLh14j3/bgPlprZ2UvUFaqRKUHH9P1zGNqtjDhT0RXpuNgdhJfislCOX4P6T2M4WUZe2iPsbQ/AtaSJX3+tzEaS1ml5GyGEUi+B78ue/ZWju62SCFJxP+7YW/gtDHEy/a4//6CP/89m//6AYh2ge6iKoX4/pBl6v5j0WmHpnsdG/bZpvfG6OKCGvJavQSoliTUObvfiMawNmRyV+Wx3BpNfeYTXOsavmScZmS7M2A2Aj5d2cQSGcvqrn86elEUoiixEx+5238vcD0vbbNKqM/mR/w5UD0IXG/E4MD8ushONP/db2OJ+fkrbgFAPT5r12+NEWTuehuqZjAQWh36W4tLxyciJEfO3EzB9vq744I9qdI0PweZOo5QY9xsHzkJAv8Ty/zp1dT6HU2q5UiKoxnY4F143F/UDzHMtfYg7enVCfOxIj4BcqwfYwItyGvQFUE2IlM0/VVfFGS6zFSteOUQHGGuW3jR9570tWNW73vsWpRUVx2t1tu+itfAqTr1b6L4dwB7RKmlQlBPS+OmMQusowGhOrvXnqyFjAj2i6LtMpctgpGz1QLxSOmn49626cjlq9vszpitIojMgs3RtHawnLRSo60C3nOrT9+XeaB8NpcSKyU4BSnwP6VK8ksTrSnUsYGL9kbGj+Ru1Jt5Z+obkbq7cSGesPc3UjAVUOKHIC0vY7oW+LzicfkQBsMkua4J5L+rVS5/YUSWZ6k8gAAAA==',
+  hazmat: 'data:image/webp;base64,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',
+};
+
+// Helper — returns an <img> tag for the given lifeline key at any size.
+// Used everywhere icons are rendered (cards, pills, markers, popups, sheet).
+function iconHTML(key, size) {
+  const url = ICON_URLS[key];
+  if (!url) {
+    // Fallback when the lifeline is unknown — neutral gray dot
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="#888" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>`;
+  }
+  return `<img src="${url}" alt="" draggable="false" width="${size}" height="${size}" style="display:block;width:${size}px;height:${size}px;object-fit:contain">`;
+}
+
+// LIFELINES — metadata only (icon comes from ICON_URLS via iconHTML).
+// Color is used for the card-strip, type-label text, and selected-marker ring.
+const LIFELINES = {
+  safety:   { label:'Safety & Security',   color:'#a8311f', desc:'Law enforcement, fire, search & rescue, government services, community safety.' },
+  food:     { label:'Food, Hydration, Shelter', color:'#8a6500', desc:'Food, drinking water, shelter, and agriculture systems.' },
+  health:   { label:'Health & Medical',    color:'#a83299', desc:'Hospitals, EMS, public health, medical supply chain, fatality management.' },
+  energy:   { label:'Energy (Power & Fuel)', color:'#d35400', desc:'Power generation and distribution, fuel, energy systems.' },
+  comms:    { label:'Communications',      color:'#7d3c98', desc:'Voice, internet, broadcasting, alerts & warnings, financial systems.' },
+  trans:    { label:'Transportation',      color:'#404040', desc:'Highways, mass transit, aviation, maritime, rail, pipeline.' },
+  hazmat:   { label:'Hazardous Materials', color:'#1e8449', desc:'Facilities, hazardous debris and pollutants, hazardous material.' },
+  water:    { label:'Water Systems',       color:'#1f618d', desc:'Drinking water, wastewater systems, water infrastructure.' },
+};
+
+// Map raw lifeline string from the service into one of the 8 keys above.
+// Substring match so variants like "Energy (Power & Fuel)" or
+// "Food, Hydration, and Shelter" all land on the right key.
+function normaliseLifeline(raw) {
+  if (!raw) return null;
+  const s = String(raw).toLowerCase();
+  if (s.includes('safety') || s.includes('security'))            return 'safety';
+  if (s.includes('food')   || s.includes('shelter') || s.includes('hydration')) return 'food';
+  if (s.includes('health') || s.includes('medical'))             return 'health';
+  if (s.includes('energy') || s.includes('power') || s.includes('fuel')) return 'energy';
+  if (s.includes('commun') || s.includes('telecom'))             return 'comms';
+  if (s.includes('transp') || s.includes('aviation') || s.includes('rail') || s.includes('highway')) return 'trans';
+  if (s.includes('hazard') || s.includes('hazmat'))              return 'hazmat';
+  if (s.includes('water')  || s.includes('wastewater'))          return 'water';
+  return null; // unknown — shown under a neutral fallback
+}
+
+// ════════════════════════════════════════════════════════════════
+//  AUTH — OAuth 2.0 with PKCE + silent refresh
+//  --------------------------------------------------------------
+//  Token shape (what we cache):
+//    { accessToken, refreshToken, expiresAt, refreshExpiresAt, username }
+//  expiresAt / refreshExpiresAt are absolute epoch ms so we can check
+//  freshness without re-deriving from the AGOL response.
+// ════════════════════════════════════════════════════════════════
+let TOKEN = null;
+
+// ── PKCE helpers ─────────────────────────────────────────────────
+function _randomString(byteLen = 48) {
+  const arr = new Uint8Array(byteLen);
+  crypto.getRandomValues(arr);
+  return _base64url(arr);
+}
+function _base64url(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let str = '';
+  for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function _sha256base64url(s) {
+  const buf  = new TextEncoder().encode(s);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return _base64url(new Uint8Array(hash));
+}
+
+// ── Token cache helpers ──────────────────────────────────────────
+function loadStoredToken() {
+  try {
+    const raw = localStorage.getItem(CONFIG.tokenKey);
+    if (!raw) return null;
+    const t = JSON.parse(raw);
+    if (!t.accessToken || !t.expiresAt) return null;
+    return t;
+  } catch { return null; }
+}
+function saveToken(t) {
+  TOKEN = t;
+  localStorage.setItem(CONFIG.tokenKey, JSON.stringify(t));
+}
+function clearStoredToken() {
+  TOKEN = null;
+  localStorage.removeItem(CONFIG.tokenKey);
+  // Clear PKCE breadcrumbs too so a half-finished flow doesn't haunt us
+  sessionStorage.removeItem('oauth_verifier');
+  sessionStorage.removeItem('oauth_state');
+}
+function _tokenFromResponse(data) {
+  // AGOL returns access_token, expires_in (seconds), refresh_token,
+  // refresh_token_expires_in (seconds), username, ssl. expires_in can
+  // arrive as a number OR a string depending on the org config.
+  const now = Date.now();
+  const expSec  = Number(data.expires_in) || 7200;
+  const refSec  = Number(data.refresh_token_expires_in) || 0;
+  return {
+    accessToken:      data.access_token,
+    refreshToken:     data.refresh_token || (TOKEN && TOKEN.refreshToken) || null,
+    expiresAt:        now + expSec * 1000,
+    refreshExpiresAt: refSec ? now + refSec * 1000 : (TOKEN && TOKEN.refreshExpiresAt) || null,
+    username:         data.username || (TOKEN && TOKEN.username) || null,
+  };
+}
+
+// Detect whether the app is loaded inside an iframe (e.g. Experience
+// Builder). Uses a try/catch because cross-origin parents throw when
+// you read window.top in some browsers.
+function isInIframe() {
+  try { return window.self !== window.top; } catch { return true; }
+}
+
+// Pre-built authorize URL (with PKCE values stashed in sessionStorage)
+// so the popup AND the fallback "open in new tab" link share the same
+// verifier — otherwise whichever one the user clicks second would have
+// stale PKCE values and the token exchange would fail.
+let _preparedAuthUrl = null;
+
+// ── OAuth flow: kick off the authorize step ──────────────────────
+//   • Standalone (regular tab): redirect the whole page.
+//   • Embedded in an iframe (Experience Builder): redirect inside the
+//     iframe is blocked because AGOL's login page sets X-Frame-Options.
+//     Instead, we open a popup window (top-level browser context) and
+//     pipe the auth code back via postMessage.
+//
+// IMPORTANT: when opening a popup, window.open() must run in the same
+// synchronous tick as the user's click — otherwise the browser sees it
+// as "programmatic" and blocks it. That's why this function is NOT
+// async at the top level: it opens the popup first (sync), then does
+// the async crypto in a follow-up Promise that navigates the popup to
+// the actual auth URL once it's ready.
+function startOAuthFlow() {
+  if (isInIframe()) {
+    // Sync: open the popup immediately while we still have user
+    // activation. We point it at about:blank because the auth URL
+    // isn't ready yet — the PKCE challenge is async.
+    const w = 540, h = 720;
+    const left = Math.max(0, (screen.width  - w) / 2);
+    const top  = Math.max(0, (screen.height - h) / 2);
+    const popup = window.open(
+      'about:blank', 'critical2tn_oauth',
+      `width=${w},height=${h},left=${left},top=${top},toolbar=0,menubar=0,scrollbars=1`
+    );
+    if (!popup) {
+      setLoginError('Popup was blocked — please allow popups for this site, then click Sign in again.');
+      return;
+    }
+    // Show a loading hint inside the popup while we prep the auth URL
+    try {
+      popup.document.write(
+        '<!doctype html><meta charset="utf-8"><title>Signing in…</title>' +
+        '<style>body{font-family:system-ui,sans-serif;padding:40px;text-align:center;color:#333;background:#f0f2f5}' +
+        '.s{margin-top:20px;color:#666;font-size:13px}</style>' +
+        '<div><strong>Connecting to ArcGIS Online…</strong><div class="s">One moment.</div></div>'
+      );
+    } catch { /* cross-origin popup just before nav — fine to ignore */ }
+    // Use the URL pre-built when the login screen mounted if we have
+    // one — keeps PKCE values consistent with the fallback link. Else
+    // build a fresh one.
+    const urlPromise = _preparedAuthUrl
+      ? Promise.resolve(_preparedAuthUrl)
+      : _buildAuthorizeUrl();
+    urlPromise
+      .then(url => { popup.location.href = url; })
+      .catch(err => {
+        try { popup.close(); } catch {}
+        console.error('OAuth start failed:', err);
+        setLoginError('Could not start sign-in. ' + (err.message || ''));
+      });
+    _waitForOAuthResult(popup);
+  } else {
+    // Standalone — full-page redirect
+    const urlPromise = _preparedAuthUrl
+      ? Promise.resolve(_preparedAuthUrl)
+      : _buildAuthorizeUrl();
+    urlPromise
+      .then(url => { window.location.href = url; })
+      .catch(err => {
+        console.error('OAuth start failed:', err);
+        setLoginError('Could not start sign-in. ' + (err.message || ''));
+      });
+  }
+}
+
+// Generate PKCE values, store them, and return the AGOL authorize URL.
+async function _buildAuthorizeUrl() {
+  const verifier  = _randomString(48);
+  const challenge = await _sha256base64url(verifier);
+  const state     = _randomString(16);
+  sessionStorage.setItem('oauth_verifier', verifier);
+  sessionStorage.setItem('oauth_state',    state);
+  const params = new URLSearchParams({
+    client_id:             CONFIG.clientId,
+    response_type:         'code',
+    redirect_uri:          CONFIG.redirectUri,
+    code_challenge:        challenge,
+    code_challenge_method: 'S256',
+    expiration:            String(CONFIG.tokenExpirationMinutes),
+    state,
+  });
+  return `${CONFIG.authorizeUrl}?${params}`;
+}
+
+// Listen for the popup posting its auth result back, exchange the code
+// for tokens, and hand off to startApp().
+function _waitForOAuthResult(popup) {
+  let settled = false;
+  const cleanup = () => {
+    window.removeEventListener('message', onMessage);
+    clearInterval(closedTimer);
+  };
+  const onMessage = async (event) => {
+    if (event.origin !== window.location.origin) return;
+    if (!event.data || event.data.type !== 'critical2tn_oauth') return;
+    settled = true;
+    cleanup();
+    if (event.data.error) {
+      setLoginError(event.data.error_description || event.data.error);
+      return;
+    }
+    try {
+      const tok = await exchangeCodeForToken(event.data.code);
+      saveToken(tok);
+      hideLogin();
+      startApp();
+    } catch (err) {
+      console.error('Token exchange failed:', err);
+      setLoginError(err.message || 'Sign-in failed.');
+    }
+  };
+  window.addEventListener('message', onMessage);
+  const closedTimer = setInterval(() => {
+    if (popup.closed && !settled) {
+      cleanup();
+      // Don't show an error if the user just dismissed it
+    }
+  }, 500);
+}
+
+// ── OAuth flow: exchange the authorization code for tokens ──────
+async function exchangeCodeForToken(code) {
+  const verifier = sessionStorage.getItem('oauth_verifier');
+  if (!verifier) throw new Error('Missing PKCE verifier — please sign in again.');
+  const params = new URLSearchParams({
+    client_id:     CONFIG.clientId,
+    grant_type:    'authorization_code',
+    code,
+    redirect_uri:  CONFIG.redirectUri,
+    code_verifier: verifier,
+    f:             'json',
+  });
+  const res  = await fetch(CONFIG.tokenUrl, { method: 'POST', body: params });
+  const data = await res.json();
+  if (data.error) {
+    const msg = (data.error.details && data.error.details[0]) || data.error.message || 'Sign-in failed';
+    throw new Error(msg);
+  }
+  if (!data.access_token) throw new Error('No access token returned');
+  // Done with the verifier — clean up so it can't be replayed
+  sessionStorage.removeItem('oauth_verifier');
+  sessionStorage.removeItem('oauth_state');
+  return _tokenFromResponse(data);
+}
+
+// ── Silent refresh ──────────────────────────────────────────────
+async function refreshAccessToken() {
+  if (!TOKEN || !TOKEN.refreshToken) throw new Error('No refresh token available');
+  if (TOKEN.refreshExpiresAt && Date.now() > TOKEN.refreshExpiresAt) {
+    throw new Error('Refresh token expired');
+  }
+  const params = new URLSearchParams({
+    client_id:     CONFIG.clientId,
+    grant_type:    'refresh_token',
+    refresh_token: TOKEN.refreshToken,
+    f:             'json',
+  });
+  const res  = await fetch(CONFIG.tokenUrl, { method: 'POST', body: params });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || 'Token refresh failed');
+  if (!data.access_token) throw new Error('No access token in refresh response');
+  return _tokenFromResponse(data);
+}
+
+// Ensure the in-memory access token is fresh; refresh it if it's near
+// expiry. Throws if refresh fails — callers should fall back to login.
+async function ensureFreshToken() {
+  if (!TOKEN) throw new Error('Not signed in');
+  if (TOKEN.expiresAt && Date.now() < TOKEN.expiresAt - CONFIG.refreshBufferMs) return;
+  const fresh = await refreshAccessToken();
+  saveToken(fresh);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  LOGIN UI
+// ════════════════════════════════════════════════════════════════
+const loginScreen = () => document.getElementById('login-screen');
+const appShell    = () => document.getElementById('app');
+
+function showLogin() {
+  loginScreen().hidden = false;
+  appShell().hidden = true;
+  setTimeout(() => {
+    const btn = document.getElementById('oauth-signin-btn');
+    if (btn) btn.focus();
+  }, 80);
+  // Pre-build the OAuth authorize URL so the "Open in a new tab"
+  // fallback link is a real <a href=...> the moment the user clicks it
+  // — anchor clicks with target=_blank are exempt from popup blockers
+  // (unlike JS-driven window.open after an async crypto step). Only
+  // shown when the app is embedded; standalone uses a full-page redirect.
+  const fallback = document.getElementById('oauth-fallback');
+  if (fallback) {
+    if (isInIframe()) {
+      _buildAuthorizeUrl().then(url => {
+        _preparedAuthUrl = url;
+        fallback.href = url;
+        fallback.hidden = false;
+      }).catch(err => {
+        console.warn('Could not pre-build auth URL:', err);
+      });
+    } else {
+      fallback.hidden = true;
+    }
+  }
+}
+
+function hideLogin() {
+  loginScreen().hidden = true;
+  appShell().hidden = false;
+}
+
+function setLoginError(msg) {
+  const el = document.getElementById('login-error');
+  if (!el) return;
+  if (!msg) { el.classList.remove('visible'); el.textContent = ''; return; }
+  el.classList.add('visible');
+  el.textContent = msg;
+}
+
+function confirmLogout() {
+  if (!confirm('Sign out and clear the cached session?')) return;
+  clearStoredToken();
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  showLogin();
+}
+
+// Handle the OAuth redirect callback. Returns true if we consumed a
+// `?code=...` from the URL, false if the page loaded normally.
+//
+// Two modes:
+//   • Popup mode (window.opener exists): we're the popup that AGOL
+//     just bounced back to with the auth code. Send the code to the
+//     opener (the embedded app) via postMessage and close the popup.
+//   • Top-level mode: we're the standalone app — exchange the code
+//     ourselves and proceed.
+async function handleOAuthCallback() {
+  const url = new URL(window.location.href);
+  const code  = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+  const error = url.searchParams.get('error');
+  if (!code && !error) return false;
+
+  // Popup branch — relay to opener and close.
+  if (window.opener && window.opener !== window) {
+    try {
+      window.opener.postMessage({
+        type:               'critical2tn_oauth',
+        code,
+        state,
+        error,
+        error_description:  url.searchParams.get('error_description') || null,
+      }, window.location.origin);
+    } catch (e) { console.error('postMessage to opener failed:', e); }
+    // Give the parent a tick to receive the message, then close
+    setTimeout(() => { try { window.close(); } catch {} }, 50);
+    // Show a brief "you can close this" message in case window.close fails
+    document.body.innerHTML = '<div style="font-family:DM Sans,sans-serif;padding:40px;text-align:center;color:#333">Sign-in complete. You can close this window.</div>';
+    return true;  // don't continue normal app boot
+  }
+
+  // Standalone branch — exchange the code in this same page.
+  if (error) {
+    setLoginError(`Sign-in error: ${url.searchParams.get('error_description') || error}`);
+    history.replaceState({}, '', url.pathname);
+    return false;
+  }
+  // CSRF check — the state we sent must match what came back
+  const expectedState = sessionStorage.getItem('oauth_state');
+  if (expectedState && state !== expectedState) {
+    setLoginError('Sign-in failed: state mismatch. Please try again.');
+    history.replaceState({}, '', url.pathname);
+    return false;
+  }
+  try {
+    const tok = await exchangeCodeForToken(code);
+    saveToken(tok);
+    history.replaceState({}, '', url.pathname);
+    return true;
+  } catch (err) {
+    console.error('Token exchange failed:', err);
+    setLoginError(err.message || 'Sign-in failed.');
+    history.replaceState({}, '', url.pathname);
+    return false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  DATA FETCHING
+// ════════════════════════════════════════════════════════════════
+function featureToAsset(feature) {
+  const p   = feature.attributes;
+  const lat = p[FIELDS.lat] ?? (feature.geometry ? feature.geometry.y : null);
+  const lng = p[FIELDS.lng] ?? (feature.geometry ? feature.geometry.x : null);
+  const lifelineKey = normaliseLifeline(p[FIELDS.lifeline]);
+  return {
+    objectId:    p[FIELDS.objectId],
+    name:        p[FIELDS.name]         || 'Unnamed asset',
+    hsipId:      p[FIELDS.hsipId]       || '',
+    address:     p[FIELDS.address]      || '',
+    city:        p[FIELDS.city]         || '',
+    state:       p[FIELDS.state]        || 'TN',
+    zip:         p[FIELDS.zip]          || '',
+    county:      p[FIELDS.county]       || '',
+    region:      p[FIELDS.region]       || '',
+    assetType:   p[FIELDS.assetType]    || '',
+    lifelineRaw: p[FIELDS.lifeline]     || '',
+    lifeline:    lifelineKey,
+    component:   p[FIELDS.component]    || '',
+    subcomp:     p[FIELDS.subcomponent] || '',
+    sector:      p[FIELDS.sector]       || '',
+    contactName:   p[FIELDS.contactName]   || '',
+    contactAgency: p[FIELDS.contactAgency] || '',
+    contactPhone:  p[FIELDS.contactPhone]  || '',
+    contactEmail:  p[FIELDS.contactEmail]  || '',
+    lat, lng,
+    distance:    null,
+  };
+}
+
+async function arcgisFetch(url, _retried) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) {
+    // 498 = invalid token, 499 = token required.
+    // If we have a refresh token, try refreshing once and retry the call
+    // before bouncing the user back to the login screen.
+    if ((data.error.code === 498 || data.error.code === 499) && !_retried && TOKEN && TOKEN.refreshToken) {
+      try {
+        const fresh = await refreshAccessToken();
+        saveToken(fresh);
+        const newUrl = url.replace(/([?&]token=)[^&]+/, `$1${encodeURIComponent(fresh.accessToken)}`);
+        return arcgisFetch(newUrl, true);
+      } catch (e) {
+        // Fall through to expired-token handling below
+      }
+    }
+    if (data.error.code === 498 || data.error.code === 499) {
+      const err = new Error('Token expired or invalid');
+      err.tokenExpired = true;
+      throw err;
+    }
+    throw new Error(`ArcGIS error ${data.error.code}: ${data.error.message}`);
+  }
+  return data;
+}
+
+async function fetchAssets() {
+  if (!TOKEN) { showLogin(); return; }
+  // Refresh proactively so background ticks don't fail with 498 first
+  try { await ensureFreshToken(); }
+  catch (err) {
+    console.warn('Token refresh failed before fetch:', err);
+    clearStoredToken();
+    showLogin();
+    return;
+  }
+  setLoadingState(true);
+  const outFields = Object.values(FIELDS).join(',');
+  // AGOL hosted feature services cap a single query at maxRecordCount
+  // (default 1,000 or 2,000 depending on org). To pull every record we
+  // page with resultOffset until either the server reports it has no
+  // more (`exceededTransferLimit === false`) or returns an empty page.
+  // We use a generous page size so the average dataset finishes in 1–3
+  // round-trips; the server will silently cap to its own limit anyway.
+  const pageSize = 2000;
+  try {
+    const allFeatures = [];
+    let offset = 0;
+    let more = true;
+    let safety = 50;   // hard cap: never make more than 50 paged requests
+    while (more && safety-- > 0) {
+      const params = new URLSearchParams({
+        where:             '1=1',
+        outFields,
+        returnGeometry:    'true',
+        outSR:             '4326',
+        f:                 'json',
+        resultOffset:      String(offset),
+        resultRecordCount: String(pageSize),
+        token:             TOKEN.accessToken,
+      });
+      const data = await arcgisFetch(`${CONFIG.serviceUrl}/query?${params}`);
+      const feats = data.features || [];
+      allFeatures.push(...feats);
+      // Update the count progressively so the user sees data flowing in
+      document.getElementById('list-count').textContent = `Loading… ${allFeatures.length}`;
+      // Two ways to know we're done: server says "no more" (preferred),
+      // or we got fewer rows than we asked for (fallback).
+      more = (data.exceededTransferLimit === true) || (feats.length === pageSize);
+      offset += feats.length;
+      if (feats.length === 0) break;
+    }
+    if (safety <= 0) console.warn('[Critical2TN] paging hit safety cap — some records may not have loaded');
+    // Diagnostic: log the field names + sample values on the first
+    // feature so it's easy to confirm contact_* fields are actually
+    // being returned by the view. Open DevTools console to see this.
+    if (allFeatures.length) {
+      const sample = allFeatures[0].attributes || {};
+      const hasContact = ['contact_name','contact_agency','contact_phone','contact_email']
+        .some(k => sample[k] != null && sample[k] !== '');
+      console.info('[Critical2TN] first feature attribute keys:', Object.keys(sample));
+      console.info('[Critical2TN] first feature contact values:', {
+        contact_name:   sample.contact_name,
+        contact_agency: sample.contact_agency,
+        contact_phone:  sample.contact_phone,
+        contact_email:  sample.contact_email,
+        anyPresent:     hasContact,
+      });
+    }
+    const raw = allFeatures.map(featureToAsset)
+                  .filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lng));
+    assets = raw.map((a, idx) => ({
+      ...a,
+      id: `a${idx}`,
+      distance: (userLat !== null) ? haversine(userLat, userLng, a.lat, a.lng) : null,
+    }));
+    setLoadingState(false);
+    setOfflineBanner(false);
+    cacheData(assets);
+    renderedList = getFiltered();
+    document.getElementById('list-count').textContent = `${renderedList.length} asset${renderedList.length !== 1 ? 's' : ''}`;
+    refreshMarkers();
+    renderList();
+    updateLastRefreshed(false);
+  } catch (err) {
+    console.error('Fetch failed:', err);
+    setLoadingState(false);
+    if (err.tokenExpired) {
+      // Token died — push back to login, but keep last-known data on screen
+      clearStoredToken();
+      alert('Your session has expired. Please sign in again.');
+      showLogin();
+      return;
+    }
+    // Network error — fall back to cached data if any
+    const cached = loadCachedData();
+    if (cached && cached.assets && cached.assets.length) {
+      assets = cached.assets.map(a => ({
+        ...a,
+        distance: (userLat !== null) ? haversine(userLat, userLng, a.lat, a.lng) : a.distance,
+      }));
+      renderedList = getFiltered();
+      document.getElementById('list-count').textContent = `${renderedList.length} asset${renderedList.length !== 1 ? 's' : ''}`;
+      refreshMarkers();
+      renderList();
+      updateLastRefreshed(true, cached.ts);
+      setOfflineBanner(true);
+    } else {
+      showError(`Could not load assets.<br><small>${err.message}</small>`);
+    }
+  }
+}
+
+// ── Attachments ─────────────────────────────────────────────────
+// Layer capability flag — set the first time fetchLayerMeta() runs.
+// `null` means "haven't checked yet"; `true`/`false` is the answer.
+let LAYER_HAS_ATTACHMENTS = null;
+let LAYER_META_ERROR = null;
+
+async function fetchLayerMeta() {
+  if (LAYER_HAS_ATTACHMENTS !== null) return;
+  if (!TOKEN) return;
+  const url = `${CONFIG.serviceUrl}?f=json&token=${encodeURIComponent(TOKEN.accessToken)}`;
+  try {
+    const data = await arcgisFetch(url);
+    LAYER_HAS_ATTACHMENTS = data.hasAttachments === true;
+    console.info('[Critical2TN] layer hasAttachments =', LAYER_HAS_ATTACHMENTS);
+  } catch (err) {
+    LAYER_META_ERROR = err.message || String(err);
+    console.warn('[Critical2TN] failed to read layer metadata:', err);
+  }
+}
+
+async function fetchAttachmentInfo(objectId) {
+  if (!TOKEN) return { state: 'error', message: 'Not signed in', infos: [] };
+  try { await ensureFreshToken(); }
+  catch (err) { return { state: 'error', message: 'Session expired — sign in again', infos: [] }; }
+
+  // Diagnostic: log everything about the attempt so we can see exactly
+  // what the server returned. Open DevTools → Console to read this.
+  console.group(`[Critical2TN] attachments: objectId=${objectId}`);
+  console.info('serviceUrl:', CONFIG.serviceUrl);
+  console.info('LAYER_HAS_ATTACHMENTS:', LAYER_HAS_ATTACHMENTS);
+
+  // Try in order of reliability: queryAttachments (works on most views),
+  // then the per-feature /attachments endpoint as a fallback. We DON'T
+  // gate on LAYER_HAS_ATTACHMENTS — that flag is sometimes wrong on
+  // views, and it's better to attempt the query and show a real error
+  // than to silently say "no attachments".
+  const attempts = [
+    {
+      name: 'queryAttachments',
+      url: `${CONFIG.serviceUrl}/queryAttachments?` + new URLSearchParams({
+        objectIds: String(objectId),
+        returnUrl: 'true',
+        f:         'json',
+        token:     TOKEN.accessToken,
+      }),
+      parse: (data) => {
+        const groups = data.attachmentGroups || [];
+        const group  = groups.find(g => String(g.parentObjectId) === String(objectId)) || groups[0];
+        return (group && group.attachmentInfos) || [];
+      },
+    },
+    {
+      name: 'per-feature /attachments',
+      url: `${CONFIG.serviceUrl}/${objectId}/attachments?f=json&token=${encodeURIComponent(TOKEN.accessToken)}`,
+      parse: (data) => data.attachmentInfos || [],
+    },
+  ];
+
+  let lastErr = null;
+  for (const attempt of attempts) {
+    console.info(`trying ${attempt.name}:`, attempt.url);
+    try {
+      const res = await fetch(attempt.url);
+      const data = await res.json();
+      console.info(`${attempt.name} response:`, data);
+      if (data.error) {
+        lastErr = new Error(`${attempt.name}: ${data.error.code} ${data.error.message}`);
+        continue;
+      }
+      const raw = attempt.parse(data) || [];
+      console.info(`${attempt.name} parsed ${raw.length} attachment(s)`);
+      const infos = raw.map(a => {
+        let attUrl = a.url || `${CONFIG.serviceUrl}/${objectId}/attachments/${a.id}`;
+        if (!/[?&]token=/.test(attUrl)) {
+          attUrl += (attUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(TOKEN.accessToken);
+        }
+        return {
+          id:          a.id,
+          name:        a.name,
+          contentType: a.contentType,
+          size:        a.size,
+          url:         attUrl,
+          isImage:     (a.contentType || '').startsWith('image/'),
+        };
+      });
+      console.groupEnd();
+      return { state: 'ok', infos };
+    } catch (err) {
+      console.warn(`${attempt.name} threw:`, err);
+      lastErr = err;
+    }
+  }
+  console.groupEnd();
+  return {
+    state:   'error',
+    message: lastErr ? lastErr.message : 'Could not load attachments (both endpoints failed).',
+    infos:   [],
+  };
+}
+
+// ── Cache (offline support) ─────────────────────────────────────
+function cacheData(list) {
+  try {
+    const payload = { ts: Date.now(), assets: list };
+    localStorage.setItem(CONFIG.cacheKey, JSON.stringify(payload));
+  } catch (e) { /* quota — ignore */ }
+}
+function loadCachedData() {
+  try {
+    const raw = localStorage.getItem(CONFIG.cacheKey);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+// ── Status helpers ──────────────────────────────────────────────
+function setLoadingState(loading) {
+  document.getElementById('loading-bar').style.display = loading ? 'block' : 'none';
+  if (loading && assets.length === 0) document.getElementById('list-count').textContent = 'Loading…';
+}
+function updateLastRefreshed(stale, ts) {
+  const when = stale && ts ? new Date(ts) : new Date();
+  const t = when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('last-refreshed').innerHTML = `Updated ${t}${stale ? ' <span class="stale-badge">CACHED</span>' : ''}`;
+}
+function setOfflineBanner(on) {
+  document.getElementById('offline-banner').hidden = !on;
+}
+function showError(msg) {
+  document.getElementById('asset-list').innerHTML =
+    `<div class="empty-state"><div class="icon">⚠️</div><p>${msg}</p>
+     <button onclick="fetchAssets()" style="margin-top:14px;padding:10px 20px;background:var(--tema-blue);color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Retry</button></div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════════
+let map, userMarker, userLat = null, userLng = null;
+let markers = {}, assets = [];
+let activeFilter = 'all', searchTerm = '', selectedId = null, sortByDistance = true;
+let renderedList = [];
+let refreshTimer = null;
+
+function getAsset(id) { return assets.find(a => String(a.id) === String(id)); }
+
+// ════════════════════════════════════════════════════════════════
+//  FILTER GRID — 8 lifelines + "All"
+// ════════════════════════════════════════════════════════════════
+function buildFilterGrid() {
+  const allBtn = `
+    <button class="fgt active" data-key="all" aria-pressed="true" onclick="setFilter(this,'all')">
+      <div class="fgt-icon" aria-hidden="true"><svg viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="#002868"/><circle cx="13" cy="13" r="6" fill="#fff"/></svg></div>
+      <div class="fgt-label">All</div>
+    </button>`;
+  const others = Object.entries(LIFELINES).map(([key, ll]) => `
+    <button class="fgt" data-key="${key}" aria-pressed="false" onclick="setFilter(this,'${key}')" aria-label="Filter: ${ll.label}">
+      <div class="fgt-icon" aria-hidden="true">${iconHTML(key, 26)}</div>
+      <div class="fgt-label">${ll.label.replace(/&amp;/g,'&').split(',')[0].split(' & ')[0].replace('Hazardous Materials','HazMat').replace('Transportation','Transport')}</div>
+    </button>`).join('');
+  document.getElementById('filter-grid').innerHTML = `<div class="fg-row" role="group" aria-label="Filter by community lifeline">${allBtn}${others}</div>`;
+}
+
+function toggleFilterDrawer(forceClose = false) {
+  const drawer = document.getElementById('filter-drawer');
+  const btn    = document.getElementById('filter-toggle-btn');
+  const isOpen = drawer.classList.contains('open');
+  if (forceClose || isOpen) {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    drawer.setAttribute('inert', '');
+    btn.setAttribute('aria-expanded', 'false');
+  } else {
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    drawer.removeAttribute('inert');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function setFilter(el, key) {
+  document.querySelectorAll('.fgt').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
+  el.classList.add('active'); el.setAttribute('aria-pressed', 'true');
+  activeFilter = key;
+  updateActiveFilterBar();
+  renderList();
+  if (key !== 'all') toggleFilterDrawer(true);
+}
+
+function clearTypeFilter() {
+  const allBtn = document.querySelector('.fgt[data-key="all"]');
+  document.querySelectorAll('.fgt').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
+  if (allBtn) { allBtn.classList.add('active'); allBtn.setAttribute('aria-pressed', 'true'); }
+  activeFilter = 'all';
+  updateActiveFilterBar();
+  renderList();
+}
+
+function updateActiveFilterBar() {
+  const bar = document.getElementById('active-filters');
+  const btn = document.getElementById('filter-toggle-btn');
+  const chips = [];
+  if (activeFilter !== 'all' && LIFELINES[activeFilter]) chips.push({ kind: 'type', label: LIFELINES[activeFilter].label });
+  bar.innerHTML = chips.map(c =>
+    `<button class="active-chip" type="button" data-clear="${c.kind}" aria-label="Remove filter: ${c.label}">${c.label}<span class="active-chip-x" aria-hidden="true">×</span></button>`
+  ).join('');
+  if (!bar._bound) {
+    bar._bound = true;
+    bar.addEventListener('click', (e) => {
+      const chip = e.target.closest('.active-chip[data-clear]');
+      if (!chip) return;
+      if (chip.getAttribute('data-clear') === 'type') clearTypeFilter();
+    });
+  }
+  btn.classList.toggle('has-filter', chips.length > 0);
+}
+
+function onSearch() { searchTerm = document.getElementById('search-input').value.toLowerCase(); renderList(); }
+function toggleSort() {
+  sortByDistance = !sortByDistance;
+  document.getElementById('sort-label').textContent = sortByDistance ? '📍 Nearest first' : '🔤 A–Z';
+  renderList();
+}
+
+function getFiltered() {
+  let list = assets.filter(a => {
+    if (activeFilter !== 'all' && a.lifeline !== activeFilter) return false;
+    if (searchTerm) {
+      const h = `${a.name} ${a.city} ${a.county} ${a.address} ${a.assetType} ${a.sector} ${a.region}`.toLowerCase();
+      if (!h.includes(searchTerm)) return false;
+    }
+    return true;
+  });
+  if (sortByDistance && userLat !== null) list.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+  else list.sort((a, b) => a.name.localeCompare(b.name));
+  return list;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  LIST RENDERING
+// ════════════════════════════════════════════════════════════════
+function renderList() {
+  renderedList = getFiltered();
+  document.getElementById('list-count').textContent = `${renderedList.length} asset${renderedList.length !== 1 ? 's' : ''}`;
+  const c = document.getElementById('asset-list');
+  if (!renderedList.length) {
+    const isFiltering = activeFilter !== 'all' || searchTerm;
+    if (assets.length === 0 || !isFiltering) {
+      c.innerHTML = '<div class="empty-state" role="status"><div class="icon" aria-hidden="true">🏛️</div><p>No assets to display.</p></div>';
+    } else {
+      c.innerHTML = '<div class="empty-state" role="status"><div class="icon" aria-hidden="true">🔍</div><p>No assets match your search.<br>Try a different filter or search term.</p></div>';
+    }
+    return;
+  }
+  c.innerHTML = renderedList.map(renderCard).join('');
+}
+
+function renderCard(a) {
+  const ll = a.lifeline ? LIFELINES[a.lifeline] : null;
+  const color = ll ? ll.color : '#666';
+  const label = ll ? ll.label : (a.lifelineRaw || 'Other');
+  const iconImg = iconHTML(a.lifeline, 38);
+  // Distance moved from the title row into the meta-badge row so the
+  // asset name has the full card width (truncates with ellipsis only
+  // when names are genuinely too long, not because a 4.8-mi pill is
+  // squatting in the title's space).
+  const dist  = a.distance !== null ? `<span class="dist-pill">📍 ${a.distance.toFixed(1)} mi</span>` : '';
+  const cityLine = [a.address, [a.city, a.state].filter(Boolean).join(', ') + (a.zip ? ` ${a.zip}` : ''), a.county ? `(${a.county} Co.)` : ''].filter(Boolean).join(' · ');
+  const badges = [
+    dist,
+    a.sector ? `<span class="meta-badge sector">${escapeHtml(a.sector)}</span>` : '',
+  ].filter(Boolean).join('');
+  const sidAttr = String(a.id).replace(/"/g, '&quot;');
+  return `<article class="asset-card ${String(selectedId) === String(a.id) ? 'selected' : ''}" id="card-${a.id}"
+    data-asset-id="${sidAttr}" role="listitem" tabindex="0"
+    aria-label="${escapeHtml(a.name)}, ${escapeHtml(label)}, ${escapeHtml(a.city)}${a.distance !== null ? ' — ' + a.distance.toFixed(1) + ' miles away' : ''}">
+    <div class="card-body">
+      <div class="card-strip" style="background:${color}"></div>
+      <div class="card-content">
+        <div class="card-top">
+          <div class="type-icon">${iconImg}</div>
+          <div class="card-titles">
+            <div class="card-name-row">
+              <div class="card-name">${escapeHtml(a.name)}</div>
+            </div>
+            <div class="card-type-label" style="color:${color}">${escapeHtml(label)}</div>
+            ${a.assetType ? `<div class="card-asset-type">${escapeHtml(a.assetType)}</div>` : ''}
+          </div>
+        </div>
+        ${cityLine ? `<div class="card-address">${escapeHtml(cityLine)}</div>` : ''}
+        ${badges ? `<div class="meta-badges">${badges}</div>` : ''}
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="card-action primary" data-action="details" data-asset-id="${sidAttr}" aria-label="View details for ${escapeHtml(a.name)}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        Details
+      </button>
+      <button class="card-action" data-action="directions" data-asset-id="${sidAttr}" aria-label="Get directions to ${escapeHtml(a.name)}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        Directions
+      </button>
+    </div>
+  </article>`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+// ── Delegated card handlers (one listener, survives re-renders) ─
+function bindListHandlers() {
+  const list = document.getElementById('asset-list');
+  if (!list || list._bound) return;
+  list._bound = true;
+  list.addEventListener('click', (e) => {
+    const btn = e.target.closest('.card-action[data-asset-id]');
+    if (btn) {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-asset-id');
+      if (btn.getAttribute('data-action') === 'directions') openDirections(id);
+      else                                                  openDetail(id);
+      return;
+    }
+    const card = e.target.closest('.asset-card[data-asset-id]');
+    if (card) selectAsset(card.getAttribute('data-asset-id'));
+  });
+  list.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.asset-card[data-asset-id]');
+    if (!card || e.target !== card) return;
+    e.preventDefault();
+    selectAsset(card.getAttribute('data-asset-id'));
+  });
+}
+
+function openDirections(id) {
+  const a = getAsset(id); if (!a) return;
+  const fullAddr = `${a.address}, ${a.city}, ${a.state} ${a.zip}`.trim().replace(/,\s*$/, '');
+  const url = `https://maps.google.com/?q=${encodeURIComponent(fullAddr || `${a.lat},${a.lng}`)}`;
+  window.open(url, '_blank', 'noopener');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MAP
+// ════════════════════════════════════════════════════════════════
+// Cluster group — holds every asset marker and groups nearby ones into
+// numbered bubbles when the map is zoomed out, so a 4,000-asset state
+// like Tennessee doesn't render as a wall of overlapping pins. Markers
+// break apart automatically as the user zooms in.
+let clusterGroup = null;
+
+function initMap() {
+  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([35.85, -86.4], 7);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+  L.control.attribution({ position: 'bottomleft', prefix: '© OpenStreetMap © CARTO' }).addTo(map);
+  // Custom cluster icons styled to match TEMA blue branding. Three size
+  // tiers based on cluster size so a 5-asset cluster doesn't look the
+  // same as a 200-asset cluster.
+  clusterGroup = L.markerClusterGroup({
+    showCoverageOnHover:     false,    // don't draw the polygon — looks busy
+    spiderfyOnMaxZoom:       true,     // splay overlapping pins at max zoom
+    disableClusteringAtZoom: 14,       // stop clustering once the user is in close
+    maxClusterRadius:        55,
+    chunkedLoading:          true,     // smoother first-render with thousands of pins
+    iconCreateFunction(cluster) {
+      const n = cluster.getChildCount();
+      let size;
+      if      (n >= 100) size = 56;
+      else if (n >= 25)  size = 48;
+      else if (n >= 10)  size = 42;
+      else               size = 36;
+      const fontSz = n >= 100 ? 14 : 13;
+      return L.divIcon({
+        className: 'cikr-cluster',
+        html: `<div style="width:${size}px;height:${size}px;background:rgba(0,40,104,0.92);border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:${fontSz}px;font-family:'DM Sans',sans-serif;box-shadow:0 3px 10px rgba(0,0,0,0.35)">${n}</div>`,
+        iconSize: [size, size],
+      });
+    },
+  });
+  map.addLayer(clusterGroup);
+}
+
+function refreshMarkers() {
+  if (!clusterGroup) return;
+  clusterGroup.clearLayers();
+  markers = {};
+  const layers = [];
+  assets.forEach(a => {
+    const ll = a.lifeline ? LIFELINES[a.lifeline] : null;
+    const color = ll ? ll.color : '#666';
+    const label = ll ? ll.label : (a.lifelineRaw || 'Other');
+    const popIcon = iconHTML(a.lifeline, 28);
+    const mk = L.marker([a.lat, a.lng], { icon: makeIcon(a) })
+      .bindPopup(
+        `<div class="pop">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="flex-shrink:0">${popIcon}</div>
+            <div class="pop-name">${escapeHtml(a.name)}</div>
+          </div>
+          <div class="pop-type" style="color:${color}">${escapeHtml(label)}</div>
+          ${a.assetType ? `<div style="font-size:11px;color:var(--text3);margin-top:2px">${escapeHtml(a.assetType)}</div>` : ''}
+        </div>`,
+        { closeButton: false, offset: [0, -4] })
+      .on('click', () => selectAsset(a.id));
+    markers[String(a.id)] = mk;
+    layers.push(mk);
+  });
+  // addLayers (plural) is much faster than addLayer in a loop for thousands
+  // of markers — uses chunked indexing under the hood.
+  clusterGroup.addLayers(layers);
+}
+
+function makeIcon(a, sel = false) {
+  const ll = a.lifeline ? LIFELINES[a.lifeline] : null;
+  const color = ll ? ll.color : '#666';
+  const sz = sel ? 40 : 30;
+  // FEMA icons come with their own navy-blue circle, so the marker is just
+  // the image. Selection state adds a colored ring (lifeline color) and a
+  // larger drop-shadow so the active asset still pops on a busy map.
+  const ring = sel
+    ? `box-shadow:0 0 0 3px ${color}, 0 3px 12px rgba(0,0,0,0.35)`
+    : `box-shadow:0 2px 6px rgba(0,0,0,0.3)`;
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;${ring};overflow:hidden;background:#fff">${iconHTML(a.lifeline, sz)}</div>`,
+    iconSize:   [sz, sz],
+    iconAnchor: [sz / 2, sz / 2],
+  });
+}
+
+function selectAsset(id) {
+  const a = getAsset(id); if (!a) return;
+  if (selectedId && markers[String(selectedId)]) {
+    const o = getAsset(selectedId);
+    if (o) markers[String(selectedId)].setIcon(makeIcon(o, false));
+  }
+  selectedId = a.id;
+  const mk = markers[String(a.id)];
+  if (mk) {
+    mk.setIcon(makeIcon(a, true));
+    // If this marker is currently inside a cluster, zoom in until it's
+    // visible, then open the popup. zoomToShowLayer is the cluster
+    // plugin's helper for exactly this case — without it, openPopup()
+    // on a clustered marker is a no-op.
+    if (clusterGroup && clusterGroup.hasLayer(mk)) {
+      clusterGroup.zoomToShowLayer(mk, () => mk.openPopup());
+    } else {
+      mk.openPopup();
+      map.flyTo([a.lat, a.lng], Math.max(map.getZoom(), 14), { duration: 0.9 });
+    }
+  } else {
+    map.flyTo([a.lat, a.lng], 14, { duration: 0.9 });
+  }
+  document.querySelectorAll('.asset-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('card-' + a.id);
+  if (card) { card.classList.add('selected'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  GEOLOCATION
+// ════════════════════════════════════════════════════════════════
+function requestLocation() {
+  if (!navigator.geolocation) return;
+  document.getElementById('loc-label').textContent = '…';
+  navigator.geolocation.getCurrentPosition(onLocationSuccess, () => {
+    document.getElementById('loc-label').textContent = 'Locate';
+    alert('Could not get your location. Please enable location access.');
+  }, { timeout: 10000, enableHighAccuracy: true });
+}
+
+function recenterOnUser() {
+  if (userLat === null || userLng === null) { requestLocation(); return; }
+  map.flyTo([userLat, userLng], Math.max(map.getZoom(), 12), { duration: 0.8 });
+}
+
+function onLocationSuccess(pos) {
+  userLat = pos.coords.latitude; userLng = pos.coords.longitude;
+  document.getElementById('loc-label').textContent = 'Located ✓';
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([userLat, userLng], {
+    icon: L.divIcon({ className: '', html: '<div class="user-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+    zIndexOffset: 1000,
+  }).addTo(map);
+  map.flyTo([userLat, userLng], 10, { duration: 1 });
+  assets = assets.map(a => ({ ...a, distance: haversine(userLat, userLng, a.lat, a.lng) }));
+  renderList();
+}
+
+function haversine(la1, lo1, la2, lo2) {
+  const R = 3958.8, dL = r(la2 - la1), dO = r(lo2 - lo1);
+  const A = Math.sin(dL / 2) ** 2 + Math.cos(r(la1)) * Math.cos(r(la2)) * Math.sin(dO / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(A), Math.sqrt(1 - A));
+}
+function r(d) { return d * Math.PI / 180; }
+
+// ════════════════════════════════════════════════════════════════
+//  DETAIL SHEET
+// ════════════════════════════════════════════════════════════════
+let _lastFocusBeforeDetail = null;
+
+async function openDetail(id) {
+  const a = getAsset(id); if (!a) return;
+  _lastFocusBeforeDetail = document.activeElement;
+  selectAsset(id);
+  const ll = a.lifeline ? LIFELINES[a.lifeline] : null;
+  const color = ll ? ll.color : '#666';
+  const label = ll ? ll.label : (a.lifelineRaw || 'Other');
+  const bannerIcon = iconHTML(a.lifeline, 42);
+  const desc  = ll ? ll.desc  : '';
+  const fullAddr = `${a.address}, ${a.city}, ${a.state} ${a.zip}`.trim().replace(/,\s*$/, '');
+  const addrEnc  = encodeURIComponent(fullAddr || `${a.lat},${a.lng}`);
+  const distLine = a.distance !== null ? `<div class="sheet-dist">📍 ${a.distance.toFixed(1)} mi away</div>` : '';
+
+  const kvRows = [
+    a.assetType   ? ['Asset Type',   a.assetType]   : null,
+    a.sector      ? ['CISA Sector',  a.sector]      : null,
+    a.component   ? ['Component',    a.component]   : null,
+    a.subcomp     ? ['Subcomponent', a.subcomp]     : null,
+    a.county      ? ['County',       a.county]      : null,
+    a.hsipId      ? ['HSIP ID',      a.hsipId]      : null,
+  ].filter(Boolean);
+  const detailsSec = kvRows.length ? `
+    <div class="sdiv"></div>
+    <div class="sec">
+      <div class="sec-label">Details</div>
+      <div class="kv-grid">
+        ${kvRows.map(([k, v]) => `<div class="kv-key">${escapeHtml(k)}</div><div class="kv-val">${escapeHtml(v)}</div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Contact section — always rendered, even when fields are empty, so
+  // users can see at a glance that the asset is missing contact info
+  // and needs to be populated. Phone/email become tap-to-call /
+  // tap-to-mail links when present; empty fields show a muted
+  // "Not provided" placeholder.
+  const phoneDigits = (a.contactPhone || '').replace(/[^\d+]/g, '');
+  const empty = `<div class="kv-val kv-empty">Not provided</div>`;
+  const contactRows = [
+    ['Contact', a.contactName   ? `<div class="kv-val">${escapeHtml(a.contactName)}</div>`   : empty],
+    ['Agency',  a.contactAgency ? `<div class="kv-val">${escapeHtml(a.contactAgency)}</div>` : empty],
+    ['Phone',   a.contactPhone  ? `<a class="kv-val kv-link" href="tel:${escapeHtml(phoneDigits)}">${escapeHtml(a.contactPhone)}</a>` : empty],
+    ['Email',   a.contactEmail  ? `<a class="kv-val kv-link" href="mailto:${escapeHtml(a.contactEmail)}">${escapeHtml(a.contactEmail)}</a>` : empty],
+  ];
+  const contactSec = `
+    <div class="sdiv"></div>
+    <div class="sec">
+      <div class="sec-label">Contact</div>
+      <div class="kv-grid">
+        ${contactRows.map(([k, v]) => `<div class="kv-key">${escapeHtml(k)}</div>${v}`).join('')}
+      </div>
+    </div>`;
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="sheet-banner" style="background:${color}18;border:1px solid ${color}40;color:${color};">
+      ${bannerIcon}
+      <div>
+        <div class="banner-label" style="color:${color}">${escapeHtml(label)}</div>
+        ${desc ? `<div class="banner-desc" style="color:${color}">${escapeHtml(desc)}</div>` : ''}
+      </div>
+    </div>
+    <div class="sheet-header">
+      <h2 class="sheet-name" id="detail-asset-name">${escapeHtml(a.name)}</h2>
+      <div class="sheet-addr">${escapeHtml(a.address || '')}${a.address ? '<br>' : ''}${escapeHtml(a.city || '')}${a.city && a.state ? ', ' : ''}${escapeHtml(a.state || '')} ${escapeHtml(String(a.zip || ''))}${a.county ? ' — ' + escapeHtml(a.county) + ' County' : ''}</div>
+      ${distLine}
+    </div>
+    ${detailsSec}
+    ${contactSec}
+    <div class="sdiv"></div>
+    <div class="sec" id="attachments-sec">
+      <div class="sec-label">Attachments</div>
+      <div id="attachments-body" style="font-size:13px;color:var(--text3)">Loading…</div>
+    </div>
+    <div class="sdiv"></div>
+    <div class="nav-btns">
+      <a class="nav-btn goo" href="https://maps.google.com/?q=${addrEnc}" target="_blank" rel="noopener" aria-label="Open in Google Maps">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Google Maps
+      </a>
+      <a class="nav-btn apl" href="https://maps.apple.com/?q=${addrEnc}" target="_blank" rel="noopener" aria-label="Open in Apple Maps">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Apple Maps
+      </a>
+    </div>`;
+  const sheet = document.getElementById('detail-sheet');
+  sheet.removeAttribute('hidden');
+  sheet.classList.add('open');
+  setTimeout(() => { const btn = sheet.querySelector('.sheet-close-btn'); if (btn) btn.focus(); }, 50);
+  sheet._keyHandler = e => {
+    if (e.key === 'Escape') { closeDetail(); return; }
+    if (e.key !== 'Tab') return;
+    const focusables = sheet.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  document.addEventListener('keydown', sheet._keyHandler);
+
+  // Lazy-load attachments — only fetched when the detail is opened, not on
+  // the initial list query (saves bandwidth on big asset sets).
+  loadAttachmentsInto(a);
+}
+
+async function loadAttachmentsInto(a) {
+  const box = document.getElementById('attachments-body');
+  const sec = document.getElementById('attachments-sec');
+  if (!box) return;
+  if (sec) sec.style.display = '';
+  console.info(`[Critical2TN] loading attachments for OBJECTID=${a.objectId} (${a.name})`);
+  const result = await fetchAttachmentInfo(a.objectId);
+  if (result.state === 'error') {
+    box.innerHTML = `<div style="color:#842029;font-size:13px;line-height:1.5">${escapeHtml(result.message)}<br><span style="color:var(--text3);font-size:11px">Open browser DevTools console for details.</span></div>`;
+    return;
+  }
+  const infos = result.infos;
+  if (!infos.length) {
+    box.innerHTML = '<div style="color:var(--text3);font-size:13px">No attachments for this asset.</div>';
+    return;
+  }
+  box.innerHTML = `<div class="attachment-grid">${infos.map((att, i) => `
+    <div class="attachment-tile ${att.isImage ? 'loading' : ''}" data-idx="${i}" data-url="${escapeHtml(att.url)}" data-name="${escapeHtml(att.name)}" data-type="${escapeHtml(att.contentType)}" tabindex="0" role="button" aria-label="${escapeHtml(att.name)}">
+      ${att.isImage ? `<img src="${escapeHtml(att.url)}" alt="${escapeHtml(att.name)}" onload="this.parentElement.classList.remove('loading')" onerror="this.parentElement.innerHTML='<div class=\\'fileinfo\\'>📄<br><strong>'+this.alt+'</strong></div>';this.parentElement.classList.remove('loading')">` : `<div class="fileinfo">📄<br><strong>${escapeHtml(att.name)}</strong><br>${formatBytes(att.size)}</div>`}
+    </div>`).join('')}</div>`;
+  box.querySelectorAll('.attachment-tile').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const url = tile.getAttribute('data-url');
+      const type = tile.getAttribute('data-type');
+      if (type && type.startsWith('image/')) openLightbox(url, tile.getAttribute('data-name'));
+      else                                    window.open(url, '_blank', 'noopener');
+    });
+    tile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); }
+    });
+  });
+}
+
+function formatBytes(n) {
+  if (!n) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function closeDetail() {
+  const sheet = document.getElementById('detail-sheet');
+  sheet.classList.remove('open');
+  setTimeout(() => sheet.setAttribute('hidden', ''), 350);
+  document.removeEventListener('keydown', sheet._keyHandler);
+  if (_lastFocusBeforeDetail) _lastFocusBeforeDetail.focus();
+}
+
+// ── Lightbox ───────────────────────────────────────────────────
+function openLightbox(url, name) {
+  const lb = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img');
+  img.src = url; img.alt = name || '';
+  lb.hidden = false;
+  document.addEventListener('keydown', _lightboxKey);
+}
+function closeLightbox() {
+  document.getElementById('lightbox').hidden = true;
+  document.getElementById('lightbox-img').src = '';
+  document.removeEventListener('keydown', _lightboxKey);
+}
+function _lightboxKey(e) { if (e.key === 'Escape') closeLightbox(); }
+
+// ════════════════════════════════════════════════════════════════
+//  STARTUP
+// ════════════════════════════════════════════════════════════════
+async function startApp() {
+  buildFilterGrid();
+  bindListHandlers();
+  initMap();
+  await fetchAssets();
+  // Discover layer capabilities (hasAttachments, etc.) — runs in parallel
+  // with everything else; the result is consulted when a detail is opened.
+  fetchLayerMeta();
+  if (navigator.geolocation) navigator.geolocation.getCurrentPosition(onLocationSuccess, () => {}, { timeout: 5000 });
+  if (CONFIG.refreshInterval > 0) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(fetchAssets, CONFIG.refreshInterval);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Step 1 — if we just got back from the OAuth redirect, exchange the code
+  const consumed = await handleOAuthCallback();
+  if (consumed) {
+    hideLogin();
+    startApp();
+    return;
+  }
+  // Step 2 — otherwise, look for a cached token from a previous session
+  const stored = loadStoredToken();
+  if (stored && stored.accessToken) {
+    TOKEN = stored;
+    // If the access token is past expiry, try a silent refresh first
+    try {
+      if (Date.now() > stored.expiresAt - CONFIG.refreshBufferMs) {
+        await ensureFreshToken();
+      }
+      hideLogin();
+      startApp();
+    } catch (err) {
+      console.warn('Silent refresh on startup failed:', err);
+      clearStoredToken();
+      showLogin();
+    }
+  } else {
+    showLogin();
+  }
+});
+
+window.addEventListener('load', () => { setTimeout(() => { if (map) map.invalidateSize(); }, 300); });
+window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#002868">
+<meta name="referrer" content="no-referrer-when-downgrade">
+<!-- Allow Experience Builder (and other parents) to embed this app in
+     an iframe. Browsers ignore CSP in <meta>, but it documents intent
+     and matches the pattern used in the shelter app. -->
+<meta http-equiv="Content-Security-Policy" content="frame-ancestors *">
+<script>
+  // Apply embed layout immediately to avoid a flash of the wrong sizing.
+  // Usage: append ?layout=full to the URL in the Experience Builder
+  // embed widget so the app stretches to fill the iframe.
+  (function() {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('layout') === 'full') document.documentElement.classList.add('layout-full');
+  })();
+</script>
+<title>Critical2TN</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f2f5; --surface: #ffffff; --surface2: #f7f8fa; --border: #e2e5ea;
+    --text: #0f1117; --text2: #444c5c; --text3: #4f5665;
+    --tema-blue: #002868; --tema-red: #BF0A30;
+    --focus: #ffbf47;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08); --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
+    --radius: 14px; --radius-sm: 8px;
+  }
+  html, body { height: 100%; margin: 0; padding: 0; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  #app { display: flex; flex-direction: column; height: 100%; min-height: 100vh; max-width: 480px; margin: 0 auto; background: var(--bg); }
+  /* App is hidden until the user is signed in */
+  #app[hidden] { display: none !important; }
+  /* ?layout=full — embed mode: stretch to fill the iframe container */
+  .layout-full #app { max-width: 100%; margin: 0; }
+
+  /* ── Login screen ────────────────────────────────────────── */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 5000;
+    background: linear-gradient(165deg, var(--tema-blue) 0%, #00193f 100%);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  #login-screen[hidden] { display: none; }
+  .login-card {
+    width: 100%; max-width: 420px;
+    background: var(--surface); border-radius: 18px;
+    padding: 28px 24px 22px; box-shadow: var(--shadow-lg);
+  }
+  .login-brand { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .login-brand .tn-badge { width: 56px; height: 56px; }
+  .login-title { font-size: 18px; font-weight: 700; color: var(--text); text-align: center; letter-spacing: -0.3px; }
+  .login-sub   { font-size: 13px; color: var(--text2); text-align: center; line-height: 1.4; max-width: 340px; }
+  .login-form  { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+  .login-form label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .login-form input {
+    width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 16px; background: var(--surface2); color: var(--text);
+    outline: none; transition: border-color 0.15s, background 0.15s;
+  }
+  .login-form input:focus { border-color: var(--tema-blue); background: var(--surface); box-shadow: 0 0 0 3px rgba(0,40,104,0.12); }
+  .login-row { display: flex; flex-direction: column; gap: 6px; }
+  .login-checkbox { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); }
+  .login-checkbox input { width: auto; }
+  .login-btn {
+    width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm);
+    background: var(--tema-blue); color: white; font-size: 15px; font-weight: 700;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; min-height: 48px;
+    transition: opacity 0.15s, transform 0.05s;
+  }
+  .login-btn:hover { opacity: 0.92; }
+  .login-btn:active { transform: scale(0.99); }
+  .login-btn:disabled { opacity: 0.55; cursor: wait; }
+  .login-btn-oauth { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
+  .login-btn-oauth:hover { background: #003a8c; }
+  .login-error {
+    background: #fde8ea; border: 1px solid #f5c2c7; color: #842029;
+    padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px;
+    line-height: 1.4; display: none;
+  }
+  .login-error.visible { display: block; }
+  .login-meta { font-size: 11px; color: var(--text3); text-align: center; margin-top: 14px; line-height: 1.5; }
+  .login-meta a { color: var(--tema-blue); text-decoration: none; }
+  .login-meta a:hover { text-decoration: underline; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .skip-link { position: absolute; top: -100px; left: 0; z-index: 9999; background: var(--focus); color: #000; font-weight: 700; font-size: 14px; padding: 10px 16px; border-radius: 0 0 8px 0; text-decoration: none; transition: top 0.2s; }
+  .skip-link:focus { top: 0; }
+
+  /* ── Header ──────────────────────────────────────────────── */
+  #header { background: var(--tema-blue); padding: 12px 16px 10px; flex-shrink: 0; z-index: 100; padding-top: max(12px, env(safe-area-inset-top)); }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+  .app-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .tn-badge { width: 38px; height: 38px; display: block; flex-shrink: 0; }
+  .app-title-text { color: white; font-size: 16px; font-weight: 700; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-pills { display: flex; gap: 6px; flex-shrink: 0; }
+  .header-pill {
+    display: flex; align-items: center; gap: 5px; font-size: 12px; font-family: 'DM Mono', monospace;
+    color: white; background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.5);
+    border-radius: 20px; padding: 6px 11px; cursor: pointer; transition: background 0.15s; white-space: nowrap;
+    font-weight: 600; min-height: 36px;
+  }
+  .header-pill:hover { background: rgba(255,255,255,0.28); }
+  .header-pill.icon-only { padding: 6px; aspect-ratio: 1; justify-content: center; }
+  .search-wrap { position: relative; margin-bottom: 8px; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; }
+  #search-input {
+    width: 100%; padding: 10px 10px 10px 34px; border: 2px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 16px;
+    background: var(--surface); color: var(--text); outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #search-input:focus { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(255,191,71,0.35); }
+
+  .filter-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    color: var(--text2); border-radius: 20px; padding: 5px 11px;
+    font-size: 12px; font-weight: 700; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap; min-height: 32px;
+  }
+  .filter-btn:hover { border-color: var(--tema-blue); color: var(--tema-blue); }
+  .filter-btn.has-filter { background: var(--tema-blue); border-color: var(--tema-blue); color: white; }
+  .active-filters { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; padding: 0 16px 8px; }
+  .active-filters:empty { display: none; }
+  .active-chip {
+    display: flex; align-items: center; gap: 3px;
+    background: var(--tema-blue); color: white;
+    border-radius: 12px; padding: 3px 8px; border: none;
+    font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .active-chip-x { font-size: 13px; line-height: 1; opacity: 0.8; margin-left: 1px; }
+  #filter-drawer {
+    overflow: hidden; max-height: 0;
+    transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1);
+    background: var(--tema-blue);
+    padding: 0 16px;
+  }
+  #filter-drawer.open { max-height: 320px; padding: 12px 16px 14px; }
+  .fg-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+  @media (min-width: 480px) { .fg-row { grid-template-columns: repeat(5, 1fr); } }
+  .fgt {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; user-select: none; opacity: 0.65; transition: opacity 0.15s, transform 0.15s;
+    background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.15);
+    padding: 7px 4px; border-radius: 10px; color: white;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .fgt:hover { opacity: 0.95; background: rgba(255,255,255,0.12); }
+  .fgt.active { opacity: 1; background: white; border-color: white; color: var(--tema-blue); transform: scale(1.02); }
+  .fgt-icon { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
+  .fgt-icon svg { width: 100%; height: 100%; }
+  .fgt-label { font-size: 10px; font-weight: 700; text-align: center; line-height: 1.15; }
+
+  /* ── Map ─────────────────────────────────────────────────── */
+  #map-container { flex-shrink: 0; height: 36vh; position: relative; }
+  #map { width: 100%; height: 100%; }
+  #fab-locate {
+    position: absolute; bottom: 14px; right: 12px; width: 48px; height: 48px;
+    background: var(--tema-blue); color: white; border: none; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,40,104,0.4);
+    transition: transform 0.15s; z-index: 400;
+  }
+  #fab-locate:hover { transform: scale(1.08); }
+  #fab-locate:active { transform: scale(0.95); }
+
+  /* ── List ────────────────────────────────────────────────── */
+  #list-section { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .list-controls { position: sticky; top: 0; z-index: 10; background: var(--bg); box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+  .list-header { padding: 10px 16px 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .list-count { font-size: 12px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.6px; }
+  #last-refreshed { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .stale-badge { display: inline-block; background: #fdeed3; color: #6b4200; border: 1px solid #d4920a; padding: 1px 6px; border-radius: 6px; font-size: 10px; font-weight: 700; margin-left: 4px; vertical-align: 2px; }
+  .sort-toggle {
+    font-size: 12px; color: var(--tema-blue); font-weight: 700; cursor: pointer;
+    padding: 6px 10px; border-radius: 6px; border: none; background: none;
+    min-height: 36px; display: flex; align-items: center;
+  }
+  #asset-list { display: flex; flex-direction: column; padding: 0 0 80px; }
+
+  /* ── Card ────────────────────────────────────────────────── */
+  .asset-card {
+    background: var(--surface); margin: 0 12px 8px; border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 2px solid transparent; cursor: pointer; transition: all 0.2s; overflow: hidden;
+  }
+  .asset-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+  .asset-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-color: transparent; }
+  .asset-card.selected { border-color: var(--tema-blue); box-shadow: 0 0 0 3px rgba(0,40,104,0.1), var(--shadow); }
+  .card-body { display: flex; align-items: stretch; }
+  .card-strip { width: 5px; flex-shrink: 0; }
+  .card-content { flex: 1; padding: 13px 13px 10px; min-width: 0; }
+  .card-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 5px; }
+  .type-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: white; }
+  .type-icon svg { width: 22px; height: 22px; }
+  .card-titles { flex: 1; min-width: 0; }
+  .card-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; flex: 1; min-width: 0; }
+  .card-type-label { font-size: 12px; font-weight: 600; margin-top: 1px; }
+  .card-asset-type { font-size: 11px; color: var(--text3); margin-top: 1px; font-style: italic; }
+  .card-address { font-size: 12px; color: var(--text2); line-height: 1.4; margin-bottom: 0; }
+  .dist-pill { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 600; color: #003a8c; background: #dce6fb; padding: 3px 8px; border-radius: 6px; flex-shrink: 0; white-space: nowrap; }
+  .meta-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+  .meta-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); }
+  .meta-badge.region { background: #e8eef9; border-color: #b9c8e6; color: #1e3a6e; }
+  .meta-badge.sector { background: #f0e9f7; border-color: #c9b8df; color: #5a3a85; }
+  .card-footer { border-top: 1px solid var(--border); display: flex; }
+  .card-action {
+    flex: 1; padding: 12px 6px; display: flex; align-items: center; justify-content: center; gap: 4px;
+    font-size: 12px; font-weight: 700; color: var(--text2); cursor: pointer; transition: background 0.15s, color 0.15s;
+    text-decoration: none; border: none; background: none; font-family: 'DM Sans', sans-serif;
+    min-height: 44px;
+  }
+  .card-action:hover { background: var(--surface2); color: var(--tema-blue); }
+  .card-action + .card-action { border-left: 1px solid var(--border); }
+  .card-action.primary { color: var(--tema-blue); }
+
+  /* ── Empty / status ──────────────────────────────────────── */
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text3); }
+  .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.5; }
+  .offline-banner { background: #fdeed3; border-bottom: 1px solid #d4920a; color: #6b4200; padding: 8px 14px; font-size: 12px; text-align: center; font-weight: 600; }
+
+  /* ── User marker ─────────────────────────────────────────── */
+  .user-dot { width: 16px; height: 16px; background: var(--tema-blue); border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 3px rgba(0,40,104,0.3); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 3px rgba(0,40,104,0.3)} 50%{box-shadow:0 0 0 8px rgba(0,40,104,0.08)} }
+  .leaflet-popup-content-wrapper { border-radius: var(--radius-sm) !important; box-shadow: var(--shadow-lg) !important; font-family: 'DM Sans',sans-serif !important; padding: 0 !important; }
+  .leaflet-popup-content { margin: 0 !important; }
+  .pop { padding: 11px 13px; min-width: 160px; }
+  .pop-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; color: var(--text); }
+  .pop-type { font-size: 11px; font-weight: 600; }
+
+  /* ── Detail Sheet ────────────────────────────────────────── */
+  #detail-sheet { position: fixed; inset: 0; z-index: 2000; pointer-events: none; }
+  #detail-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.55); opacity: 0; transition: opacity 0.3s; }
+  #detail-content {
+    position: absolute; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto;
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom,20px);
+    transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+    max-height: 85vh; overflow-y: auto;
+  }
+  #detail-sheet.open { pointer-events: all; }
+  #detail-sheet.open #detail-overlay { opacity: 1; }
+  #detail-sheet.open #detail-content { transform: translateY(0); }
+  .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
+  .sheet-close-btn {
+    position: absolute; top: 12px; right: 16px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 50%; width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px; line-height: 1; color: var(--text2);
+  }
+  .sheet-banner { margin: 14px 20px 0; border-radius: var(--radius-sm); padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; color: white; }
+  .sheet-banner svg { width: 24px; height: 24px; flex-shrink: 0; }
+  .banner-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .banner-desc { font-size: 12px; margin-top: 2px; opacity: 0.95; line-height: 1.4; }
+  .sheet-header { padding: 14px 20px 10px; }
+  .sheet-name { font-size: 19px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 3px; }
+  .sheet-addr { font-size: 13px; color: var(--text2); line-height: 1.4; }
+  .sheet-dist { font-size: 12px; font-family: 'DM Mono',monospace; font-weight: 700; margin-top: 5px; color: #003a8c; }
+  .sdiv { height: 1px; background: var(--border); margin: 0 20px; }
+  .sec { padding: 14px 20px; }
+  .sec-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text3); margin-bottom: 8px; }
+  .kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-size: 13px; }
+  .kv-key { color: var(--text3); font-weight: 600; }
+  .kv-val { color: var(--text); word-break: break-word; }
+  .kv-empty { color: var(--text3); font-style: italic; opacity: 0.75; }
+  a.kv-link { color: var(--tema-blue); text-decoration: none; font-weight: 600; }
+  a.kv-link:hover { text-decoration: underline; }
+  .attachment-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 4px; }
+  .attachment-tile {
+    aspect-ratio: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden; cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center;
+    color: var(--text3); font-size: 11px;
+  }
+  .attachment-tile img { width: 100%; height: 100%; object-fit: cover; }
+  .attachment-tile .fileinfo { padding: 6px; text-align: center; line-height: 1.3; }
+  .attachment-tile.loading { background: linear-gradient(90deg, var(--surface2) 25%, #ececec 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .nav-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 20px 20px; }
+  .nav-btn { padding: 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; font-family: 'DM Sans',sans-serif; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; transition: opacity 0.15s; min-height: 48px; }
+  .nav-btn:hover { opacity: 0.88; }
+  .nav-btn.goo { background: #1558d6; color: white; }
+  .nav-btn.apl { background: #111; color: white; }
+
+  /* ── Image lightbox ──────────────────────────────────────── */
+  #lightbox {
+    position: fixed; inset: 0; z-index: 5500; background: rgba(0,0,0,0.92);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  #lightbox[hidden] { display: none; }
+  #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+  #lightbox .close {
+    position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px;
+    background: rgba(0,0,0,0.6); border: 1.5px solid white; color: white;
+    border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  @keyframes loadbar { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }
+  @media(min-width:600px){ #app{ box-shadow: var(--shadow-lg); } }
+
+  /* ── Desktop layout ──────────────────────────────────────── */
+  @media (min-width: 900px) {
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      grid-template-columns: 420px 1fr;
+      max-width: none; width: 100%; height: 100vh; min-height: 100vh; box-shadow: none;
+    }
+    #header        { grid-column: 1 / -1; grid-row: 1; }
+    #list-section  { grid-column: 1; grid-row: 2; border-right: 1px solid var(--border); }
+    #map-container { grid-column: 2; grid-row: 2; height: 100%; }
+    #detail-content { left: 0; right: auto; bottom: 0; width: 420px; max-width: 420px; margin: 0; max-height: calc(100vh - 60px); }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#asset-list">Skip to asset list</a>
+
+<!-- ════════════════════════════════════════════════════════════
+     LOGIN SCREEN
+     Shown until a valid AGOL token is obtained. The Sign in
+     button kicks off the OAuth 2.0 authorization-code (PKCE) flow.
+     ════════════════════════════════════════════════════════════ -->
+<div id="login-screen" role="dialog" aria-labelledby="login-title">
+  <div class="login-card">
+    <div class="login-brand">
+      <svg class="tn-badge" viewBox="0 0 100 100" role="img" aria-label="Tennessee state logo">
+        <rect x="0" y="0" width="100" height="84" fill="#D22730"/>
+        <rect x="0" y="84" width="100" height="5" fill="#ffffff"/>
+        <rect x="0" y="89" width="100" height="11" fill="#002868"/>
+        <text x="50" y="70" text-anchor="middle" textLength="86" lengthAdjust="spacingAndGlyphs"
+              font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="74"
+              fill="#ffffff">TN</text>
+      </svg>
+      <div>
+        <div class="login-title" id="login-title">Critical2TN</div>
+        <div class="login-sub">Sign in with your ArcGIS Online account to view critical infrastructure assets near your location.</div>
+      </div>
+    </div>
+    <div id="login-error" class="login-error" role="alert"></div>
+    <button id="oauth-signin-btn" class="login-btn login-btn-oauth" type="button" onclick="startOAuthFlow()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" style="flex-shrink:0">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="8.5" cy="7" r="4"/>
+        <polyline points="17 11 19 13 23 9"/>
+      </svg>
+      Sign in with ArcGIS Online
+    </button>
   </div>
 </div>
 
