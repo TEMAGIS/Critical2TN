@@ -168,10 +168,15 @@
     position: absolute; bottom: 14px; right: 12px; width: 48px; height: 48px;
     background: var(--tema-blue); color: white; border: none; border-radius: 50%; cursor: pointer;
     display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,40,104,0.4);
-    transition: transform 0.15s; z-index: 400;
+    transition: transform 0.15s; z-index: 350;
   }
   #basemap-toggle {
-    position: absolute; top: 12px; left: 12px; z-index: 400;
+    /* z-index 350 sits above the basemap tiles (200) and overlay pane
+       (400 inside the map's stacking context, but the map div itself
+       sits below). It also sits below the popup pane (700) so popups
+       that the user manually drags into the corner appear on top of
+       the toggle rather than behind it. */
+    position: absolute; top: 12px; left: 12px; z-index: 350;
     background: white; color: var(--text); border: 1px solid var(--border);
     border-radius: 8px; padding: 7px 11px;
     display: flex; align-items: center; gap: 6px;
@@ -1602,7 +1607,17 @@ function refreshMarkers() {
           <div class="pop-type" style="color:${color}">${escapeHtml(label)}</div>
           ${a.assetType ? `<div style="font-size:11px;color:var(--text3);margin-top:2px">${escapeHtml(a.assetType)}</div>` : ''}
         </div>`,
-        { closeButton: false, offset: [0, -4] })
+        {
+          closeButton: false,
+          offset: [0, -4],
+          // Auto-pan the map so popups never end up behind the on-map UI:
+          // the basemap toggle pill (top-left) or the locate FAB
+          // (bottom-right). Padding values are roughly the size of those
+          // controls plus a comfortable margin.
+          autoPan:                   true,
+          autoPanPaddingTopLeft:     [130, 60],
+          autoPanPaddingBottomRight: [70, 70],
+        })
       .on('click', () => selectAsset(a.id));
     markers[String(a.id)] = mk;
     layers.push(mk);
