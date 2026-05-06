@@ -7,7 +7,9 @@
 <meta name="referrer" content="no-referrer-when-downgrade">
 <title>Critical2TN</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1253,22 +1255,55 @@ function openDirections(id) {
 // ════════════════════════════════════════════════════════════════
 //  MAP
 // ════════════════════════════════════════════════════════════════
+// Cluster group — holds every asset marker and groups nearby ones into
+// numbered bubbles when the map is zoomed out, so a 4,000-asset state
+// like Tennessee doesn't render as a wall of overlapping pins. Markers
+// break apart automatically as the user zooms in.
+let clusterGroup = null;
+
 function initMap() {
   map = L.map('map', { zoomControl: false, attributionControl: false }).setView([35.85, -86.4], 7);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
   L.control.zoom({ position: 'topright' }).addTo(map);
   L.control.attribution({ position: 'bottomleft', prefix: '© OpenStreetMap © CARTO' }).addTo(map);
+  // Custom cluster icons styled to match TEMA blue branding. Three size
+  // tiers based on cluster size so a 5-asset cluster doesn't look the
+  // same as a 200-asset cluster.
+  clusterGroup = L.markerClusterGroup({
+    showCoverageOnHover:     false,    // don't draw the polygon — looks busy
+    spiderfyOnMaxZoom:       true,     // splay overlapping pins at max zoom
+    disableClusteringAtZoom: 14,       // stop clustering once the user is in close
+    maxClusterRadius:        55,
+    chunkedLoading:          true,     // smoother first-render with thousands of pins
+    iconCreateFunction(cluster) {
+      const n = cluster.getChildCount();
+      let size;
+      if      (n >= 100) size = 56;
+      else if (n >= 25)  size = 48;
+      else if (n >= 10)  size = 42;
+      else               size = 36;
+      const fontSz = n >= 100 ? 14 : 13;
+      return L.divIcon({
+        className: 'cikr-cluster',
+        html: `<div style="width:${size}px;height:${size}px;background:rgba(0,40,104,0.92);border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:${fontSz}px;font-family:'DM Sans',sans-serif;box-shadow:0 3px 10px rgba(0,0,0,0.35)">${n}</div>`,
+        iconSize: [size, size],
+      });
+    },
+  });
+  map.addLayer(clusterGroup);
 }
 
 function refreshMarkers() {
-  Object.values(markers).forEach(m => map.removeLayer(m));
+  if (!clusterGroup) return;
+  clusterGroup.clearLayers();
   markers = {};
+  const layers = [];
   assets.forEach(a => {
     const ll = a.lifeline ? LIFELINES[a.lifeline] : null;
     const color = ll ? ll.color : '#666';
     const label = ll ? ll.label : (a.lifelineRaw || 'Other');
     const popIcon = iconHTML(a.lifeline, 28);
-    const mk = L.marker([a.lat, a.lng], { icon: makeIcon(a) }).addTo(map)
+    const mk = L.marker([a.lat, a.lng], { icon: makeIcon(a) })
       .bindPopup(
         `<div class="pop">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -1281,7 +1316,11 @@ function refreshMarkers() {
         { closeButton: false, offset: [0, -4] })
       .on('click', () => selectAsset(a.id));
     markers[String(a.id)] = mk;
+    layers.push(mk);
   });
+  // addLayers (plural) is much faster than addLayer in a loop for thousands
+  // of markers — uses chunked indexing under the hood.
+  clusterGroup.addLayers(layers);
 }
 
 function makeIcon(a, sel = false) {
@@ -1310,8 +1349,21 @@ function selectAsset(id) {
   }
   selectedId = a.id;
   const mk = markers[String(a.id)];
-  if (mk) { mk.setIcon(makeIcon(a, true)); mk.openPopup(); }
-  map.flyTo([a.lat, a.lng], 14, { duration: 0.9 });
+  if (mk) {
+    mk.setIcon(makeIcon(a, true));
+    // If this marker is currently inside a cluster, zoom in until it's
+    // visible, then open the popup. zoomToShowLayer is the cluster
+    // plugin's helper for exactly this case — without it, openPopup()
+    // on a clustered marker is a no-op.
+    if (clusterGroup && clusterGroup.hasLayer(mk)) {
+      clusterGroup.zoomToShowLayer(mk, () => mk.openPopup());
+    } else {
+      mk.openPopup();
+      map.flyTo([a.lat, a.lng], Math.max(map.getZoom(), 14), { duration: 0.9 });
+    }
+  } else {
+    map.flyTo([a.lat, a.lng], 14, { duration: 0.9 });
+  }
   document.querySelectorAll('.asset-card').forEach(c => c.classList.remove('selected'));
   const card = document.getElementById('card-' + a.id);
   if (card) { card.classList.add('selected'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
