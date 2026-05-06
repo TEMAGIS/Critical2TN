@@ -170,6 +170,17 @@
     display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,40,104,0.4);
     transition: transform 0.15s; z-index: 400;
   }
+  #basemap-toggle {
+    position: absolute; top: 12px; left: 12px; z-index: 400;
+    background: white; color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 11px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    min-height: 36px; transition: background 0.15s, color 0.15s;
+  }
+  #basemap-toggle:hover { background: var(--tema-blue); color: white; border-color: var(--tema-blue); }
+  #basemap-toggle:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   #fab-locate:hover { transform: scale(1.08); }
   #fab-locate:active { transform: scale(0.95); }
 
@@ -407,6 +418,10 @@
 
   <div id="map-container" role="region" aria-label="Map showing infrastructure asset locations">
     <div id="map"></div>
+    <button id="basemap-toggle" type="button" onclick="toggleBasemap()" aria-label="Switch to Hybrid basemap" title="Switch basemap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polygon points="12 2 22 8.5 12 15 2 8.5 12 2"/><polyline points="2 15.5 12 22 22 15.5"/></svg>
+      <span class="basemap-label">Hybrid</span>
+    </button>
     <button id="fab-locate" onclick="recenterOnUser()" title="Re-center on my location" aria-label="Re-center on my location">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
     </button>
@@ -1461,11 +1476,85 @@ function openDirections(id) {
 // break apart automatically as the user zooms in.
 let clusterGroup = null;
 
+// Two-basemap setup. Each option can be a stack of one or more tile
+// layers — Hybrid is the Esri imagery service plus two transparent
+// reference overlays (place labels + road network), which is the same
+// recipe as AGOL's "Imagery Hybrid" basemap. All sources are public
+// Esri services with no token required.
+const BASEMAPS = {
+  streets: {
+    label: 'Streets',
+    layers: [
+      {
+        url:         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        attribution: '© OpenStreetMap © CARTO',
+        maxZoom:     19,
+      },
+    ],
+  },
+  hybrid: {
+    label: 'Hybrid',
+    layers: [
+      {
+        // Satellite imagery base
+        url:         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Imagery © Esri — Maxar, Earthstar Geographics, GIS User Community',
+        maxZoom:     19,
+      },
+      {
+        // Transparent place names and boundaries
+        url:         'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        attribution: '',
+        maxZoom:     19,
+      },
+      {
+        // Transparent road network (highway names, street labels)
+        url:         'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+        attribution: '',
+        maxZoom:     19,
+      },
+    ],
+  },
+};
+let currentBasemap = 'streets';
+let basemapLayers  = [];   // tracks every tile layer the current basemap added
+
+function applyBasemap(key) {
+  if (!BASEMAPS[key]) return;
+  // Tear down whatever's currently on the map
+  basemapLayers.forEach(l => map.removeLayer(l));
+  basemapLayers = [];
+  const bm = BASEMAPS[key];
+  // Add layers in array order; later layers stack visually above earlier
+  // ones within Leaflet's tilePane (which itself sits below markerPane,
+  // so cluster + marker overlays remain on top automatically).
+  bm.layers.forEach(spec => {
+    const layer = L.tileLayer(spec.url, {
+      maxZoom:     spec.maxZoom,
+      attribution: spec.attribution || '',
+    }).addTo(map);
+    basemapLayers.push(layer);
+  });
+  currentBasemap = key;
+  // Update the toggle button label to show what the *next* tap will do
+  const btn = document.getElementById('basemap-toggle');
+  if (btn) {
+    const next = key === 'streets' ? BASEMAPS.hybrid.label : BASEMAPS.streets.label;
+    const lbl = btn.querySelector('.basemap-label');
+    if (lbl) lbl.textContent = next;
+    btn.setAttribute('aria-label', `Switch to ${next} basemap`);
+  }
+}
+
+function toggleBasemap() {
+  applyBasemap(currentBasemap === 'streets' ? 'hybrid' : 'streets');
+}
+
 function initMap() {
   map = L.map('map', { zoomControl: false, attributionControl: false }).setView([35.85, -86.4], 7);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+  applyBasemap(currentBasemap);
   L.control.zoom({ position: 'topright' }).addTo(map);
-  L.control.attribution({ position: 'bottomleft', prefix: '© OpenStreetMap © CARTO' }).addTo(map);
+  L.control.attribution({ position: 'bottomleft', prefix: '' }).addTo(map);
   // Custom cluster icons styled to match TEMA blue branding. Three size
   // tiers based on cluster size so a 5-asset cluster doesn't look the
   // same as a 200-asset cluster.
