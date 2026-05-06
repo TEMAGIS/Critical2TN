@@ -964,51 +964,80 @@ async function fetchAttachmentInfo(objectId) {
   if (!TOKEN) return { state: 'error', message: 'Not signed in', infos: [] };
   try { await ensureFreshToken(); }
   catch (err) { return { state: 'error', message: 'Session expired — sign in again', infos: [] }; }
-  if (LAYER_HAS_ATTACHMENTS === false) {
-    return { state: 'unsupported', message: 'Attachments are not enabled on this layer.', infos: [] };
-  }
-  // queryAttachments is more reliable than the per-feature `/attachments`
-  // endpoint, especially for VIEW layers (which is what CIKR_TN_OHS_View
-  // is) — those often return HTTP 400 from the per-feature endpoint
-  // because the view's OBJECTID isn't directly addressable. The
-  // queryAttachments endpoint takes objectIds as a parameter and returns
-  // grouped results, and it works on both source layers and views.
-  const params = new URLSearchParams({
-    objectIds: String(objectId),
-    returnUrl: 'true',
-    f:         'json',
-    token:     TOKEN.accessToken,
-  });
-  const url = `${CONFIG.serviceUrl}/queryAttachments?${params}`;
-  try {
-    const data = await arcgisFetch(url);
-    // Response shape: { attachmentGroups: [ { parentObjectId, attachmentInfos: [...] } ] }
-    const groups = data.attachmentGroups || [];
-    const group  = groups.find(g => String(g.parentObjectId) === String(objectId)) || groups[0];
-    const raw    = (group && group.attachmentInfos) || [];
-    const infos = raw.map(a => {
-      // returnUrl=true should return a full URL; if for some reason it
-      // doesn't, build it from the layer + objectId + attachment id.
-      let attUrl = a.url || `${CONFIG.serviceUrl}/${objectId}/attachments/${a.id}`;
-      // Make sure the URL is authenticated. queryAttachments URLs
-      // sometimes already include the token; only append if absent.
-      if (!/[?&]token=/.test(attUrl)) {
-        attUrl += (attUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(TOKEN.accessToken);
+
+  // Diagnostic: log everything about the attempt so we can see exactly
+  // what the server returned. Open DevTools → Console to read this.
+  console.group(`[Critical2TN] attachments: objectId=${objectId}`);
+  console.info('serviceUrl:', CONFIG.serviceUrl);
+  console.info('LAYER_HAS_ATTACHMENTS:', LAYER_HAS_ATTACHMENTS);
+
+  // Try in order of reliability: queryAttachments (works on most views),
+  // then the per-feature /attachments endpoint as a fallback. We DON'T
+  // gate on LAYER_HAS_ATTACHMENTS — that flag is sometimes wrong on
+  // views, and it's better to attempt the query and show a real error
+  // than to silently say "no attachments".
+  const attempts = [
+    {
+      name: 'queryAttachments',
+      url: `${CONFIG.serviceUrl}/queryAttachments?` + new URLSearchParams({
+        objectIds: String(objectId),
+        returnUrl: 'true',
+        f:         'json',
+        token:     TOKEN.accessToken,
+      }),
+      parse: (data) => {
+        const groups = data.attachmentGroups || [];
+        const group  = groups.find(g => String(g.parentObjectId) === String(objectId)) || groups[0];
+        return (group && group.attachmentInfos) || [];
+      },
+    },
+    {
+      name: 'per-feature /attachments',
+      url: `${CONFIG.serviceUrl}/${objectId}/attachments?f=json&token=${encodeURIComponent(TOKEN.accessToken)}`,
+      parse: (data) => data.attachmentInfos || [],
+    },
+  ];
+
+  let lastErr = null;
+  for (const attempt of attempts) {
+    console.info(`trying ${attempt.name}:`, attempt.url);
+    try {
+      const res = await fetch(attempt.url);
+      const data = await res.json();
+      console.info(`${attempt.name} response:`, data);
+      if (data.error) {
+        lastErr = new Error(`${attempt.name}: ${data.error.code} ${data.error.message}`);
+        continue;
       }
-      return {
-        id:          a.id,
-        name:        a.name,
-        contentType: a.contentType,
-        size:        a.size,
-        url:         attUrl,
-        isImage:     (a.contentType || '').startsWith('image/'),
-      };
-    });
-    return { state: 'ok', infos };
-  } catch (err) {
-    console.warn('[Critical2TN] attachments fetch failed:', err);
-    return { state: 'error', message: err.message || 'Could not load attachments.', infos: [] };
+      const raw = attempt.parse(data) || [];
+      console.info(`${attempt.name} parsed ${raw.length} attachment(s)`);
+      const infos = raw.map(a => {
+        let attUrl = a.url || `${CONFIG.serviceUrl}/${objectId}/attachments/${a.id}`;
+        if (!/[?&]token=/.test(attUrl)) {
+          attUrl += (attUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(TOKEN.accessToken);
+        }
+        return {
+          id:          a.id,
+          name:        a.name,
+          contentType: a.contentType,
+          size:        a.size,
+          url:         attUrl,
+          isImage:     (a.contentType || '').startsWith('image/'),
+        };
+      });
+      console.groupEnd();
+      return { state: 'ok', infos };
+    } catch (err) {
+      console.warn(`${attempt.name} threw:`, err);
+      lastErr = err;
+    }
   }
+  console.groupEnd();
+  return {
+    state:   'error',
+    message: lastErr ? lastErr.message : 'Could not load attachments (both endpoints failed).',
+    infos:   [],
+  };
 }
 
 // ── Cache (offline support) ─────────────────────────────────────
@@ -1516,16 +1545,11 @@ async function loadAttachmentsInto(a) {
   const box = document.getElementById('attachments-body');
   const sec = document.getElementById('attachments-sec');
   if (!box) return;
-  const result = await fetchAttachmentInfo(a.objectId);
-  // If the layer doesn't have attachments enabled at all, hide the whole
-  // section — no point telling users about a feature the data doesn't have.
-  if (result.state === 'unsupported') {
-    if (sec) sec.style.display = 'none';
-    return;
-  }
   if (sec) sec.style.display = '';
+  console.info(`[Critical2TN] loading attachments for OBJECTID=${a.objectId} (${a.name})`);
+  const result = await fetchAttachmentInfo(a.objectId);
   if (result.state === 'error') {
-    box.innerHTML = `<div style="color:#842029;font-size:13px">${escapeHtml(result.message)}</div>`;
+    box.innerHTML = `<div style="color:#842029;font-size:13px;line-height:1.5">${escapeHtml(result.message)}<br><span style="color:var(--text3);font-size:11px">Open browser DevTools console for details.</span></div>`;
     return;
   }
   const infos = result.infos;
