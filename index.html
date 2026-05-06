@@ -257,6 +257,7 @@
   .kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-size: 13px; }
   .kv-key { color: var(--text3); font-weight: 600; }
   .kv-val { color: var(--text); word-break: break-word; }
+  .kv-empty { color: var(--text3); font-style: italic; opacity: 0.75; }
   a.kv-link { color: var(--tema-blue); text-decoration: none; font-weight: 600; }
   a.kv-link:hover { text-decoration: underline; }
   .attachment-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 4px; }
@@ -842,18 +843,58 @@ async function fetchAssets() {
   }
   setLoadingState(true);
   const outFields = Object.values(FIELDS).join(',');
-  const params = new URLSearchParams({
-    where:          '1=1',
-    outFields,
-    returnGeometry: 'true',
-    outSR:          '4326',
-    f:              'json',
-    token:          TOKEN.accessToken,
-  });
-  const url = `${CONFIG.serviceUrl}/query?${params}`;
+  // AGOL hosted feature services cap a single query at maxRecordCount
+  // (default 1,000 or 2,000 depending on org). To pull every record we
+  // page with resultOffset until either the server reports it has no
+  // more (`exceededTransferLimit === false`) or returns an empty page.
+  // We use a generous page size so the average dataset finishes in 1–3
+  // round-trips; the server will silently cap to its own limit anyway.
+  const pageSize = 2000;
   try {
-    const data = await arcgisFetch(url);
-    const raw = (data.features || []).map(featureToAsset)
+    const allFeatures = [];
+    let offset = 0;
+    let more = true;
+    let safety = 50;   // hard cap: never make more than 50 paged requests
+    while (more && safety-- > 0) {
+      const params = new URLSearchParams({
+        where:             '1=1',
+        outFields,
+        returnGeometry:    'true',
+        outSR:             '4326',
+        f:                 'json',
+        resultOffset:      String(offset),
+        resultRecordCount: String(pageSize),
+        token:             TOKEN.accessToken,
+      });
+      const data = await arcgisFetch(`${CONFIG.serviceUrl}/query?${params}`);
+      const feats = data.features || [];
+      allFeatures.push(...feats);
+      // Update the count progressively so the user sees data flowing in
+      document.getElementById('list-count').textContent = `Loading… ${allFeatures.length}`;
+      // Two ways to know we're done: server says "no more" (preferred),
+      // or we got fewer rows than we asked for (fallback).
+      more = (data.exceededTransferLimit === true) || (feats.length === pageSize);
+      offset += feats.length;
+      if (feats.length === 0) break;
+    }
+    if (safety <= 0) console.warn('[Critical2TN] paging hit safety cap — some records may not have loaded');
+    // Diagnostic: log the field names + sample values on the first
+    // feature so it's easy to confirm contact_* fields are actually
+    // being returned by the view. Open DevTools console to see this.
+    if (allFeatures.length) {
+      const sample = allFeatures[0].attributes || {};
+      const hasContact = ['contact_name','contact_agency','contact_phone','contact_email']
+        .some(k => sample[k] != null && sample[k] !== '');
+      console.info('[Critical2TN] first feature attribute keys:', Object.keys(sample));
+      console.info('[Critical2TN] first feature contact values:', {
+        contact_name:   sample.contact_name,
+        contact_agency: sample.contact_agency,
+        contact_phone:  sample.contact_phone,
+        contact_email:  sample.contact_email,
+        anyPresent:     hasContact,
+      });
+    }
+    const raw = allFeatures.map(featureToAsset)
                   .filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lng));
     assets = raw.map((a, idx) => ({
       ...a,
@@ -919,23 +960,48 @@ async function fetchLayerMeta() {
 
 async function fetchAttachmentInfo(objectId) {
   if (!TOKEN) return { state: 'error', message: 'Not signed in', infos: [] };
-  // Make sure the access token is fresh — cheap if it's already valid
   try { await ensureFreshToken(); }
   catch (err) { return { state: 'error', message: 'Session expired — sign in again', infos: [] }; }
   if (LAYER_HAS_ATTACHMENTS === false) {
     return { state: 'unsupported', message: 'Attachments are not enabled on this layer.', infos: [] };
   }
-  const url = `${CONFIG.serviceUrl}/${objectId}/attachments?f=json&token=${encodeURIComponent(TOKEN.accessToken)}`;
+  // queryAttachments is more reliable than the per-feature `/attachments`
+  // endpoint, especially for VIEW layers (which is what CIKR_TN_OHS_View
+  // is) — those often return HTTP 400 from the per-feature endpoint
+  // because the view's OBJECTID isn't directly addressable. The
+  // queryAttachments endpoint takes objectIds as a parameter and returns
+  // grouped results, and it works on both source layers and views.
+  const params = new URLSearchParams({
+    objectIds: String(objectId),
+    returnUrl: 'true',
+    f:         'json',
+    token:     TOKEN.accessToken,
+  });
+  const url = `${CONFIG.serviceUrl}/queryAttachments?${params}`;
   try {
     const data = await arcgisFetch(url);
-    const infos = (data.attachmentInfos || []).map(a => ({
-      id:           a.id,
-      name:         a.name,
-      contentType:  a.contentType,
-      size:         a.size,
-      url:          `${CONFIG.serviceUrl}/${objectId}/attachments/${a.id}?token=${encodeURIComponent(TOKEN.accessToken)}`,
-      isImage:      (a.contentType || '').startsWith('image/'),
-    }));
+    // Response shape: { attachmentGroups: [ { parentObjectId, attachmentInfos: [...] } ] }
+    const groups = data.attachmentGroups || [];
+    const group  = groups.find(g => String(g.parentObjectId) === String(objectId)) || groups[0];
+    const raw    = (group && group.attachmentInfos) || [];
+    const infos = raw.map(a => {
+      // returnUrl=true should return a full URL; if for some reason it
+      // doesn't, build it from the layer + objectId + attachment id.
+      let attUrl = a.url || `${CONFIG.serviceUrl}/${objectId}/attachments/${a.id}`;
+      // Make sure the URL is authenticated. queryAttachments URLs
+      // sometimes already include the token; only append if absent.
+      if (!/[?&]token=/.test(attUrl)) {
+        attUrl += (attUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(TOKEN.accessToken);
+      }
+      return {
+        id:          a.id,
+        name:        a.name,
+        contentType: a.contentType,
+        size:        a.size,
+        url:         attUrl,
+        isImage:     (a.contentType || '').startsWith('image/'),
+      };
+    });
     return { state: 'ok', infos };
   } catch (err) {
     console.warn('[Critical2TN] attachments fetch failed:', err);
@@ -1103,9 +1169,14 @@ function renderCard(a) {
   const color = ll ? ll.color : '#666';
   const label = ll ? ll.label : (a.lifelineRaw || 'Other');
   const iconImg = iconHTML(a.lifeline, 38);
+  // Distance moved from the title row into the meta-badge row so the
+  // asset name has the full card width (truncates with ellipsis only
+  // when names are genuinely too long, not because a 4.8-mi pill is
+  // squatting in the title's space).
   const dist  = a.distance !== null ? `<span class="dist-pill">📍 ${a.distance.toFixed(1)} mi</span>` : '';
   const cityLine = [a.address, [a.city, a.state].filter(Boolean).join(', ') + (a.zip ? ` ${a.zip}` : ''), a.county ? `(${a.county} Co.)` : ''].filter(Boolean).join(' · ');
   const badges = [
+    dist,
     a.sector ? `<span class="meta-badge sector">${escapeHtml(a.sector)}</span>` : '',
   ].filter(Boolean).join('');
   const sidAttr = String(a.id).replace(/"/g, '&quot;');
@@ -1120,7 +1191,6 @@ function renderCard(a) {
           <div class="card-titles">
             <div class="card-name-row">
               <div class="card-name">${escapeHtml(a.name)}</div>
-              ${dist}
             </div>
             <div class="card-type-label" style="color:${color}">${escapeHtml(label)}</div>
             ${a.assetType ? `<div class="card-asset-type">${escapeHtml(a.assetType)}</div>` : ''}
@@ -1319,26 +1389,27 @@ async function openDetail(id) {
       </div>
     </div>` : '';
 
-  // Contact section — phone/email are rendered as tap-to-call / tap-to-mail
-  // links so a field user can reach the asset's contact directly from the
-  // detail sheet without copy-pasting. Phone is sanitized to digits-only
-  // for the tel: URI to avoid issues with formatted strings like
-  // "(615) 555-1234 ext. 5".
+  // Contact section — always rendered, even when fields are empty, so
+  // users can see at a glance that the asset is missing contact info
+  // and needs to be populated. Phone/email become tap-to-call /
+  // tap-to-mail links when present; empty fields show a muted
+  // "Not provided" placeholder.
   const phoneDigits = (a.contactPhone || '').replace(/[^\d+]/g, '');
+  const empty = `<div class="kv-val kv-empty">Not provided</div>`;
   const contactRows = [
-    a.contactName   ? ['Contact', `<div class="kv-val">${escapeHtml(a.contactName)}</div>`] : null,
-    a.contactAgency ? ['Agency',  `<div class="kv-val">${escapeHtml(a.contactAgency)}</div>`] : null,
-    a.contactPhone  ? ['Phone',   `<a class="kv-val kv-link" href="tel:${escapeHtml(phoneDigits)}">${escapeHtml(a.contactPhone)}</a>`] : null,
-    a.contactEmail  ? ['Email',   `<a class="kv-val kv-link" href="mailto:${escapeHtml(a.contactEmail)}">${escapeHtml(a.contactEmail)}</a>`] : null,
-  ].filter(Boolean);
-  const contactSec = contactRows.length ? `
+    ['Contact', a.contactName   ? `<div class="kv-val">${escapeHtml(a.contactName)}</div>`   : empty],
+    ['Agency',  a.contactAgency ? `<div class="kv-val">${escapeHtml(a.contactAgency)}</div>` : empty],
+    ['Phone',   a.contactPhone  ? `<a class="kv-val kv-link" href="tel:${escapeHtml(phoneDigits)}">${escapeHtml(a.contactPhone)}</a>` : empty],
+    ['Email',   a.contactEmail  ? `<a class="kv-val kv-link" href="mailto:${escapeHtml(a.contactEmail)}">${escapeHtml(a.contactEmail)}</a>` : empty],
+  ];
+  const contactSec = `
     <div class="sdiv"></div>
     <div class="sec">
       <div class="sec-label">Contact</div>
       <div class="kv-grid">
         ${contactRows.map(([k, v]) => `<div class="kv-key">${escapeHtml(k)}</div>${v}`).join('')}
       </div>
-    </div>` : '';
+    </div>`;
 
   document.getElementById('detail-body').innerHTML = `
     <div class="sheet-banner" style="background:${color}18;border:1px solid ${color}40;color:${color};">
