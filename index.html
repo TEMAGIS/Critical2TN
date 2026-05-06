@@ -651,91 +651,115 @@ function isInIframe() {
 // ── OAuth flow: kick off the authorize step ──────────────────────
 //   • Standalone (regular tab): redirect the whole page.
 //   • Embedded in an iframe (Experience Builder): redirect inside the
-//     iframe would be blocked because AGOL's login page sets
-//     X-Frame-Options. Instead, we open a popup window, let it complete
-//     the OAuth dance at top-level, and pipe the auth code back via
-//     postMessage so the iframe app can finish the token exchange.
-async function startOAuthFlow() {
-  try {
-    const verifier  = _randomString(48);
-    const challenge = await _sha256base64url(verifier);
-    const state     = _randomString(16);
-    sessionStorage.setItem('oauth_verifier', verifier);
-    sessionStorage.setItem('oauth_state',    state);
-    const params = new URLSearchParams({
-      client_id:             CONFIG.clientId,
-      response_type:         'code',
-      redirect_uri:          CONFIG.redirectUri,
-      code_challenge:        challenge,
-      code_challenge_method: 'S256',
-      expiration:            String(CONFIG.tokenExpirationMinutes),
-      state,
-    });
-    const authUrl = `${CONFIG.authorizeUrl}?${params}`;
-    if (isInIframe()) {
-      await runOAuthInPopup(authUrl);
-    } else {
-      window.location.href = authUrl;
-    }
-  } catch (err) {
-    console.error('OAuth start failed:', err);
-    setLoginError('Could not start sign-in. ' + (err.message || ''));
-  }
-}
-
-// Open a popup window for the OAuth flow and wait for the auth code via
-// postMessage. The popup is the redirect_uri target — when AGOL
-// redirects it back with `?code=…`, the popup's own startup code (in
-// handleOAuthCallback) detects it's a popup and posts the result here.
-function runOAuthInPopup(authUrl) {
-  return new Promise((resolve, reject) => {
+//     iframe is blocked because AGOL's login page sets X-Frame-Options.
+//     Instead, we open a popup window (top-level browser context) and
+//     pipe the auth code back via postMessage.
+//
+// IMPORTANT: when opening a popup, window.open() must run in the same
+// synchronous tick as the user's click — otherwise the browser sees it
+// as "programmatic" and blocks it. That's why this function is NOT
+// async at the top level: it opens the popup first (sync), then does
+// the async crypto in a follow-up Promise that navigates the popup to
+// the actual auth URL once it's ready.
+function startOAuthFlow() {
+  if (isInIframe()) {
+    // Sync: open the popup immediately while we still have user
+    // activation. We point it at about:blank because the auth URL
+    // isn't ready yet — the PKCE challenge is async.
     const w = 540, h = 720;
     const left = Math.max(0, (screen.width  - w) / 2);
     const top  = Math.max(0, (screen.height - h) / 2);
     const popup = window.open(
-      authUrl, 'critical2tn_oauth',
+      'about:blank', 'critical2tn_oauth',
       `width=${w},height=${h},left=${left},top=${top},toolbar=0,menubar=0,scrollbars=1`
     );
     if (!popup) {
-      setLoginError('Popup was blocked — please allow popups for this site, then try again.');
-      return reject(new Error('popup blocked'));
+      setLoginError('Popup was blocked — please allow popups for this site, then click Sign in again.');
+      return;
     }
-    let settled = false;
-    const cleanup = () => {
-      window.removeEventListener('message', onMessage);
-      clearInterval(closedTimer);
-    };
-    const onMessage = async (event) => {
-      // Strict origin check — only accept messages from the same origin
-      // (the popup is on the same origin since it's our redirect_uri).
-      if (event.origin !== window.location.origin) return;
-      if (!event.data || event.data.type !== 'critical2tn_oauth') return;
-      settled = true;
-      cleanup();
-      if (event.data.error) {
-        setLoginError(event.data.error_description || event.data.error);
-        return reject(new Error(event.data.error));
-      }
-      try {
-        const tok = await exchangeCodeForToken(event.data.code);
-        saveToken(tok);
-        hideLogin();
-        startApp();
-        resolve(tok);
-      } catch (err) {
-        setLoginError(err.message || 'Sign-in failed.');
-        reject(err);
-      }
-    };
-    window.addEventListener('message', onMessage);
-    // Treat closing the popup before completion as cancellation
-    const closedTimer = setInterval(() => {
-      if (popup.closed && !settled) {
-        cleanup();
-        reject(new Error('Sign-in cancelled'));
-      }
-    }, 500);
+    // Show a loading hint inside the popup while we prep the auth URL
+    try {
+      popup.document.write(
+        '<!doctype html><meta charset="utf-8"><title>Signing in…</title>' +
+        '<style>body{font-family:system-ui,sans-serif;padding:40px;text-align:center;color:#333;background:#f0f2f5}' +
+        '.s{margin-top:20px;color:#666;font-size:13px}</style>' +
+        '<div><strong>Connecting to ArcGIS Online…</strong><div class="s">One moment.</div></div>'
+      );
+    } catch { /* cross-origin popup just before nav — fine to ignore */ }
+    // Now do the async PKCE prep + navigate the popup
+    _buildAuthorizeUrl()
+      .then(url => { popup.location.href = url; })
+      .catch(err => {
+        try { popup.close(); } catch {}
+        console.error('OAuth start failed:', err);
+        setLoginError('Could not start sign-in. ' + (err.message || ''));
+      });
+    // Listen for the result via postMessage
+    _waitForOAuthResult(popup);
+  } else {
+    // Standalone — full-page redirect
+    _buildAuthorizeUrl()
+      .then(url => { window.location.href = url; })
+      .catch(err => {
+        console.error('OAuth start failed:', err);
+        setLoginError('Could not start sign-in. ' + (err.message || ''));
+      });
+  }
+}
+
+// Generate PKCE values, store them, and return the AGOL authorize URL.
+async function _buildAuthorizeUrl() {
+  const verifier  = _randomString(48);
+  const challenge = await _sha256base64url(verifier);
+  const state     = _randomString(16);
+  sessionStorage.setItem('oauth_verifier', verifier);
+  sessionStorage.setItem('oauth_state',    state);
+  const params = new URLSearchParams({
+    client_id:             CONFIG.clientId,
+    response_type:         'code',
+    redirect_uri:          CONFIG.redirectUri,
+    code_challenge:        challenge,
+    code_challenge_method: 'S256',
+    expiration:            String(CONFIG.tokenExpirationMinutes),
+    state,
   });
+  return `${CONFIG.authorizeUrl}?${params}`;
+}
+
+// Listen for the popup posting its auth result back, exchange the code
+// for tokens, and hand off to startApp().
+function _waitForOAuthResult(popup) {
+  let settled = false;
+  const cleanup = () => {
+    window.removeEventListener('message', onMessage);
+    clearInterval(closedTimer);
+  };
+  const onMessage = async (event) => {
+    if (event.origin !== window.location.origin) return;
+    if (!event.data || event.data.type !== 'critical2tn_oauth') return;
+    settled = true;
+    cleanup();
+    if (event.data.error) {
+      setLoginError(event.data.error_description || event.data.error);
+      return;
+    }
+    try {
+      const tok = await exchangeCodeForToken(event.data.code);
+      saveToken(tok);
+      hideLogin();
+      startApp();
+    } catch (err) {
+      console.error('Token exchange failed:', err);
+      setLoginError(err.message || 'Sign-in failed.');
+    }
+  };
+  window.addEventListener('message', onMessage);
+  const closedTimer = setInterval(() => {
+    if (popup.closed && !settled) {
+      cleanup();
+      // Don't show an error if the user just dismissed it
+    }
+  }, 500);
 }
 
 // ── OAuth flow: exchange the authorization code for tokens ──────
