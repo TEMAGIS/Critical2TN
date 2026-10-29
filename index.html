@@ -555,6 +555,12 @@
   .as-main { flex: 1; min-width: 0; } .as-sub { font-size: 11.5px; color: var(--text3); }
   .as-dec { font: 13px 'DM Sans', sans-serif; padding: 8px; border-radius: 8px; border: 1.5px solid var(--border); background: #fff; min-height: 40px; }
   .as-log { font-size: 12px; color: var(--text2); line-height: 1.5; margin-top: 8px; }
+  .dt-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dt-up { display: inline-flex; align-items: center; cursor: pointer; } .dt-up.off { opacity: .45; cursor: not-allowed; }
+  .dt-chk { font-size: 12.5px; color: var(--text2); display: flex; gap: 8px; align-items: flex-start; line-height: 1.4; }
+  .dt-pre { border-top: 1px dashed var(--border); padding-top: 8px; font-size: 13px; display: grid; gap: 8px; }
+  .dt-probs { font-size: 12px; color: #842029; background: #fdf0f1; border-radius: 8px; padding: 8px 10px; line-height: 1.5; }
+  .dt-bad { color: #842029; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -726,7 +732,7 @@
     <h2 id="manage-title">Manage users</h2>
     <button type="button" class="sheet-close-btn mg-close" onclick="closeManage()" aria-label="Close user management">×</button>
   </div>
-  <div class="mg-tabs" role="tablist"><button type="button" class="mg-tab on" data-tab="users" role="tab" onclick="setManageTab('users')">Users</button><button type="button" class="mg-tab" data-tab="layers" role="tab" onclick="setManageTab('layers')">Map layers</button><button type="button" class="mg-tab" data-tab="airports" role="tab" onclick="setManageTab('airports')">Airports</button></div>
+  <div class="mg-tabs" role="tablist"><button type="button" class="mg-tab on" data-tab="users" role="tab" onclick="setManageTab('users')">Users</button><button type="button" class="mg-tab" data-tab="layers" role="tab" onclick="setManageTab('layers')">Map layers</button><button type="button" class="mg-tab" data-tab="airports" role="tab" onclick="setManageTab('airports')">Airports</button><button type="button" class="mg-tab" data-tab="data" role="tab" onclick="setManageTab('data')">Data</button></div>
   <div class="mg-intro" id="mg-intro-users">Approved Critical2TN users. <b>Grant edit</b> lets someone update asset records, contact details and photos.</div>
   <div id="manage-body"></div>
 </div>
@@ -3162,6 +3168,7 @@ function renderManage() {
   const body = document.getElementById('manage-body'); if (!body) return;
   if (manageState.tab === 'layers') return renderLayerAdmin(body);
   if (manageState.tab === 'airports') return renderAirportSetup(body);
+  if (manageState.tab === 'data') return renderDataTab(body);
   const s = manageState;
   const hasEdit = u => s.editSet.has(u.username.toLowerCase());
   const q = s.q.trim().toLowerCase();
@@ -3753,14 +3760,16 @@ function airMatch(airports, feats) {
   airports.forEach(ap => feats.forEach(f => { const r = airScore(ap, f); if (r) pairs.push({ ...r, id: ap.id, f }); }));
   pairs.sort((x, y) => y.s - x.s);
   const usedF = new Set(), res = {};
-  for (const p of pairs) { const oid = p.f.attributes.OBJECTID; if (res[p.id] || usedF.has(oid)) continue; res[p.id] = p; usedF.add(oid); }
+  for (const p of pairs) { const oid = p.f.attributes.objectid; if (res[p.id] || usedF.has(oid)) continue; res[p.id] = p; usedF.add(oid); }
   return res;
 }
 async function airQueryAll(url, where, fields, geom) {
   const out = []; let off = 0, guard = 60;
   while (guard-- > 0) {
     const j = await agoCall(`${url}/query`, { where, outFields: fields, returnGeometry: String(!!geom), outSR: '4326', resultOffset: String(off), resultRecordCount: '1000', orderByFields: 'OBJECTID' });
-    const fs = j.features || []; out.push(...fs); off += fs.length;
+    const fs = j.features || [];
+    fs.forEach(f => { const a = f.attributes || (f.attributes = {}); Object.keys(a).forEach(k => { const l = k.toLowerCase(); if (!(l in a)) a[l] = a[k]; }); });
+    out.push(...fs); off += fs.length;
     if (!fs.length || !j.exceededTransferLimit) break;
   }
   return out;
@@ -3810,8 +3819,8 @@ async function airFindMatches() {
     const res = airMatch(airports, feats);
     airSt.report = airports.map(ap => {
       const m = res[ap.id], at = m ? m.f.attributes : null;
-      const gid = at ? (Object.entries(at).find(([k]) => k.toLowerCase() === 'globalid') || [])[1] || '' : '';
-      return { ap, decision: m && gid ? 'match' : 'create', conf: m ? m.c : 'none', km: m ? m.d : null, oid: at ? at.OBJECTID : null, guid: gid, cname: at ? at.asset_name : '' };
+      const gid = at ? at.globalid || '' : '';
+      return { ap, decision: m && gid ? 'match' : 'create', conf: m ? m.c : 'none', km: m ? m.d : null, oid: at ? at.objectid : null, guid: gid, cname: at ? at.asset_name : '' };
     });
     airLog(`Checked ${feats.length} Critical2TN records. Review the list, then load.`);
   } catch (err) { airLog('Couldn’t check for matches: ' + err.message); }
@@ -3843,18 +3852,25 @@ async function airApply() {
       airLog(`Created ${Math.min(i + 50, creates.length)} of ${creates.length} placeholders…`);
     }
     if (creates.length) {
-      const got = await airQueryAll(airSt.layerUrl, `OBJECTID IN (${creates.map(r => Number(r.oid)).join(',')})`, `OBJECTID,${gName}`, false);
-      const m = {}; got.forEach(g => { m[g.attributes.OBJECTID] = g.attributes[gName]; });
+      const got = await airQueryAll(airSt.layerUrl, `OBJECTID IN (${creates.map(r => Number(r.oid)).filter(Boolean).join(',') || '0'})`, `OBJECTID,${gName}`, false);
+      const m = {}; got.forEach(g => { m[g.attributes.objectid] = g.attributes.globalid || ''; });
       creates.forEach(r => { r.guid = m[r.oid] || ''; });
+      const lost = creates.filter(r => !r.guid);
+      if (lost.length) {                                   // fallback: find them again by name + county
+        const again = await airQueryAll(airSt.layerUrl, "sector='Transportation Systems' AND asset_type='Airport'", 'OBJECTID,GlobalID,asset_name,county', false);
+        const key = (n, c) => airNorm(n) + '|' + airNorm(c), mm = {}; again.forEach(g => { mm[key(g.attributes.asset_name, g.attributes.county)] = g.attributes.globalid || ''; });
+        lost.forEach(r => { r.guid = mm[key(r.ap.name, r.ap.county)] || ''; });
+      }
     }
-    const rows = [];
+    const rows = [], skippedNoGuid = [];
     todo.forEach(r => {
-      if (!r.guid) return airLog(`Skipped ${r.ap.id}: no GlobalID to link on.`);
+      if (!r.guid) { skippedNoGuid.push(r.ap.id); return; }
       const at = { [spec.linkField]: r.guid, [spec.idField]: r.ap.id };
       Object.entries(r.ap.f).forEach(([k, v]) => { if (tf[k.toLowerCase()]) at[tf[k.toLowerCase()].name] = airCoerce(v, tf[k.toLowerCase()]); });
       if (tf.survey_status) at.survey_status = 'Placeholder';
       rows.push({ attributes: at });
     });
+    if (skippedNoGuid.length) airLog(`Couldn’t read a GlobalID for ${skippedNoGuid.length} airports (${skippedNoGuid.slice(0, 8).join(', ')}${skippedNoGuid.length > 8 ? '…' : ''}). Press Find matches, then Load again to finish them.`);
     for (let i = 0; i < rows.length; i += 50) {
       const j = await agoCall(`${airSt.tableUrl}/applyEdits`, { adds: JSON.stringify(rows.slice(i, i + 50)), rollbackOnFailure: 'true' });
       const bad = (j.addResults || []).filter(x => !x.success); if (bad.length) throw new Error('Details rows rejected: ' + ((bad[0].error && bad[0].error.description) || 'unknown'));
@@ -3895,6 +3911,266 @@ function renderAirportSetup(body) {
   if (q('#as-find')) q('#as-find').onclick = () => { s.layerUrl = s.layerUrl || CONFIG.serviceUrl; if (!/^https:\/\/.+\/FeatureServer\/\d+$/.test(s.tableUrl)) return airLog('Enter the details table URL (ends in /FeatureServer/0) first.'); airFindMatches(); };
   body.querySelectorAll('.as-dec').forEach(el => el.onchange = () => { rep[+el.dataset.i].decision = el.value; renderAirportSetup(body); });
   if (q('#as-apply')) q('#as-apply').onclick = airApply;
+}
+// ════════════ DATA: CSV download / upload (airport details + Critical2TN master layer) ════════════
+const dataSt = { air: { pre: null, msg: '', busy: false, clear: false }, master: { pre: null, msg: '', busy: false, clear: false, adds: false } };
+const dataRender = () => renderDataTab(document.getElementById('manage-body'));
+function parseCsv(text) {
+  const rows = []; let row = [], cur = '', q = false, i = 0;
+  text = String(text).replace(/^﻿/, '');
+  for (; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); cur = ''; if (row.some(x => x !== '')) rows.push(row); row = []; }
+    else cur += c;
+  }
+  row.push(cur); if (row.some(x => x !== '')) rows.push(row);
+  return rows;
+}
+function csvObjects(text) {
+  const rows = parseCsv(text); if (rows.length < 2) throw new Error('The file has no data rows.');
+  const headers = rows[0].map(h => h.trim());
+  const objs = rows.slice(1).map(r => { const o = {}; headers.forEach((h, k) => { o[h.toLowerCase()] = String(r[k] ?? '').replace(/^'(?=[=+\-@\t\r])/, ''); }); return o; });
+  return { headers: headers.map(h => h.toLowerCase()), objs };
+}
+function dataSave(name, text) {
+  const blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+const dataStamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
+const dataIsDate = f => f && f.type === 'esriFieldTypeDate';
+const dataIsNum = f => f && /Integer|Double|Single/.test(f.type);
+function dataCell(v, f) {
+  if (v == null || v === '') return '';
+  if (dataIsDate(f)) { const d = new Date(Number(v)); return isNaN(d) ? '' : (d.getUTCHours() + d.getUTCMinutes() + d.getUTCSeconds() === 0 ? d.toISOString().slice(0, 10) : d.toISOString()); }
+  return csvCell(v, !dataIsNum(f));
+}
+function dataCoerce(raw, f) {
+  if (/Integer/.test(f.type)) { const n = Number(raw); if (!Number.isFinite(n) || Math.round(n) !== n) throw new Error(`“${raw}” isn’t a whole number`); return n; }
+  if (/Double|Single/.test(f.type)) { const n = Number(raw); if (!Number.isFinite(n)) throw new Error(`“${raw}” isn’t a number`); return n; }
+  if (dataIsDate(f)) { const t = Date.parse(raw.length <= 10 ? raw + 'T00:00:00Z' : raw); if (isNaN(t)) throw new Error(`“${raw}” isn’t a date (use YYYY-MM-DD)`); return t; }
+  if (f.length && raw.length > f.length) throw new Error(`too long (max ${f.length} characters)`);
+  return raw;
+}
+function dataSame(a, b) {
+  const n = v => (v === undefined || v === null || v === '') ? null : v;
+  a = n(a); b = n(b); if (a === null || b === null) return a === b;
+  if (typeof a === 'number' || typeof b === 'number') return Number(a) === Number(b);
+  return String(a).trim() === String(b).trim();
+}
+function dataChange(row, cur, cols, fmap, clear, probs, label) {
+  const changes = {};
+  for (const c of cols) {
+    const f = fmap[c]; const raw = String(row[c] ?? '').trim(); let v;
+    if (raw === '') { if (!clear) continue; v = null; }
+    else { try { v = dataCoerce(raw, f); } catch (e) { probs.push(`${label}: ${f.name} — ${e.message}`); continue; } }
+    const old = cur ? (cur[f.name] ?? cur[f.name.toLowerCase()]) : null;
+    if (!dataSame(old, v)) changes[f.name] = v;
+  }
+  return changes;
+}
+async function dataQueryAll(url, where, fields, size = 2000) {
+  const out = []; let off = 0, guard = 100;
+  while (guard-- > 0) {
+    const j = await agoCall(`${url}/query`, { where, outFields: fields, returnGeometry: 'false', resultOffset: String(off), resultRecordCount: String(size), orderByFields: 'OBJECTID' });
+    const fs = j.features || [];
+    fs.forEach(f => { const a = f.attributes; Object.keys(a).forEach(k => { const l = k.toLowerCase(); if (!(l in a)) a[l] = a[k]; }); });
+    out.push(...fs); off += fs.length; if (!fs.length || !j.exceededTransferLimit) break;
+  }
+  return out;
+}
+const dataAirTable = () => { const t = airCfg() || {}; return (airSt.tableUrl || t.editUrl || t.url || '').replace(/\/+$/, ''); };
+const dataChunks = (a, n) => { const o = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; };
+
+// ── Critical2TN master layer
+const MASTER_SKIP = /^(shape|globalid|objectid|created_|last_edited|creator|editor|esri|fid$)/i;
+async function masterMeta() {
+  const meta = await agoCall(CONFIG.serviceUrl, {}, 'GET');
+  const fields = (meta.fields || []).filter(f => !/Geometry|Blob|Raster|XML/.test(f.type));
+  const editable = fields.filter(f => f.editable !== false && f.type !== 'esriFieldTypeOID' && f.type !== 'esriFieldTypeGlobalID' && f.type !== 'esriFieldTypeGUID' && !MASTER_SKIP.test(f.name));
+  return { meta, fields, editable };
+}
+async function masterDownload() {
+  const s = dataSt.master; s.busy = true; s.msg = 'Reading the layer…'; dataRender();
+  try {
+    await ensureFreshToken();
+    const { fields } = await masterMeta();
+    const rows = await dataQueryAll(CONFIG.serviceUrl, '1=1', '*');
+    const head = fields.map(f => f.name);
+    const lines = [head.join(',')].concat(rows.map(r => fields.map(f => dataCell(r.attributes[f.name] ?? r.attributes[f.name.toLowerCase()], f)).join(',')));
+    dataSave(`Critical2TN_master_${dataStamp()}.csv`, lines.join('\r\n'));
+    s.msg = `Downloaded ${rows.length} records. Keep the OBJECTID column if you plan to upload it back.`;
+  } catch (err) { s.msg = 'Couldn’t download: ' + err.message; }
+  s.busy = false; dataRender();
+}
+async function masterPreview(file) {
+  const s = dataSt.master; s.busy = true; s.pre = null; s.msg = 'Checking the file…'; dataRender();
+  try {
+    await ensureFreshToken();
+    const { headers, objs } = csvObjects(await file.text());
+    if (objs.length > 20000) throw new Error('Too many rows (limit 20,000 per upload).');
+    const { editable } = await masterMeta(); const fmap = Object.fromEntries(editable.map(f => [f.name.toLowerCase(), f]));
+    const cols = headers.filter(h => fmap[h]); const ignored = headers.filter(h => !fmap[h] && h && h !== 'objectid' && h !== 'globalid');
+    if (!headers.includes('objectid') && !s.adds) throw new Error('The file needs an OBJECTID column (use a downloaded file).');
+    const cur = await dataQueryAll(CONFIG.serviceUrl, '1=1', '*'); const byOid = new Map(cur.map(f => [Number(f.attributes.OBJECTID ?? f.attributes.objectid), f.attributes]));
+    const probs = [], updates = [], adds = []; let same = 0; const seen = new Set();
+    objs.forEach((row, i) => {
+      const label = `Row ${i + 2}`, oid = row.objectid ? Number(row.objectid) : null;
+      if (oid) {
+        if (seen.has(oid)) return probs.push(`${label}: OBJECTID ${oid} appears twice`); seen.add(oid);
+        const c = byOid.get(oid); if (!c) return probs.push(`${label}: OBJECTID ${oid} isn’t in the layer`);
+        const ch = dataChange(row, c, cols, fmap, s.clear, probs, label);
+        if (Object.keys(ch).length) updates.push({ attributes: { OBJECTID: oid, ...ch }, n: row[(fmap.asset_name ? 'asset_name' : cols[0])] }); else same++;
+      } else if (s.adds) {
+        const lat = Number(row.latitude), lon = Number(row.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon) || !row.latitude || !row.longitude) return probs.push(`${label}: new rows need latitude and longitude`);
+        if (!String(row.asset_name || '').trim()) return probs.push(`${label}: new rows need asset_name`);
+        const at = dataChange(row, null, cols, fmap, false, probs, label);
+        adds.push({ attributes: at, geometry: { x: lon, y: lat, spatialReference: { wkid: 4326 } } });
+      } else probs.push(`${label}: no OBJECTID (turn on “add new records” to create it)`);
+    });
+    s.pre = { updates, adds, same, probs, ignored, total: objs.length, cols };
+    s.msg = '';
+  } catch (err) { s.msg = 'Couldn’t read that file: ' + err.message; }
+  s.busy = false; dataRender();
+}
+async function masterApply() {
+  const s = dataSt.master, p = s.pre; if (!p) return; s.busy = true; s.msg = 'Saving…'; dataRender();
+  let ok = 0, fail = [];
+  try {
+    await ensureFreshToken();
+    for (const ch of dataChunks(p.updates, 200)) {
+      const j = await agoCall(`${CONFIG.serviceUrl}/applyEdits`, { updates: JSON.stringify(ch.map(u => ({ attributes: u.attributes }))), rollbackOnFailure: 'true' });
+      (j.updateResults || []).forEach(r => r.success ? ok++ : fail.push((r.error && r.error.description) || 'rejected'));
+    }
+    for (const ch of dataChunks(p.adds, 100)) {
+      const j = await agoCall(`${CONFIG.serviceUrl}/applyEdits`, { adds: JSON.stringify(ch), rollbackOnFailure: 'true' });
+      (j.addResults || []).forEach(r => r.success ? ok++ : fail.push((r.error && r.error.description) || 'rejected'));
+    }
+    s.msg = `Saved ${ok} change${ok === 1 ? '' : 's'}${fail.length ? `; ${fail.length} failed (${[...new Set(fail)].slice(0, 2).join('; ')})` : ''}. Reload the app to see them.`;
+    s.pre = null;
+  } catch (err) { s.msg = `Stopped after ${ok} saved: ${err.message}`; }
+  s.busy = false; dataRender();
+}
+
+// ── Airport details table
+async function airDownload() {
+  const s = dataSt.air; s.busy = true; s.msg = 'Reading the table…'; dataRender();
+  try {
+    await ensureFreshToken();
+    const url = dataAirTable(); if (!url) throw new Error('Enter the details table URL first (Airports tab).');
+    const spec = airCfg(), meta = await agoCall(url, {}, 'GET'), fmap = airFieldMap(meta);
+    const rows = await dataQueryAll(url, '1=1', '*');
+    const names = {};                                           // Critical2TN name + county for readability (ignored on upload)
+    try {
+      const gf = (LAYER_FIELDS || ['GlobalID']).find(n => n.toLowerCase() === 'globalid') || 'GlobalID';
+      for (const ch of dataChunks([...new Set(rows.map(r => r.attributes[spec.linkField]).filter(Boolean))], 80)) {
+        const j = await agoCall(`${CONFIG.serviceUrl}/query`, { where: `${gf} IN (${ch.map(g => `'${sqlQuote(g)}'`).join(',')})`, outFields: `${gf},asset_name,county`, returnGeometry: 'false' });
+        (j.features || []).forEach(f => { const a = f.attributes, k = Object.keys(a).find(x => x.toLowerCase() === 'globalid'); names[String(a[k]).toLowerCase()] = a; });
+      }
+    } catch (e) { console.warn('[Critical2TN] name lookup failed', e); }
+    const fieldNames = spec.groups.flatMap(g => g.fields.map(f => f.field)).filter(n => n !== spec.idField && fmap[n.toLowerCase()]);
+    const head = [spec.idField, spec.linkField, 'c2tn_name', 'c2tn_county', ...fieldNames];
+    const lines = [head.join(',')].concat(rows.sort((a, b) => String(a.attributes.airport_id).localeCompare(String(b.attributes.airport_id))).map(r => {
+      const a = r.attributes, nm = names[String(a[spec.linkField] || '').toLowerCase()] || {};
+      return [csvCell(a[spec.idField]), csvCell(a[spec.linkField]), csvCell(nm.asset_name), csvCell(nm.county), ...fieldNames.map(n => dataCell(a[fmap[n.toLowerCase()].name] ?? a[n], fmap[n.toLowerCase()]))].join(',');
+    }));
+    dataSave(`Critical2TN_airports_${dataStamp()}.csv`, lines.join('\r\n'));
+    s.msg = `Downloaded ${rows.length} airports. c2tn_name and c2tn_county are for reading only and are ignored on upload.`;
+  } catch (err) { s.msg = 'Couldn’t download: ' + err.message; }
+  s.busy = false; dataRender();
+}
+async function airPreview(file) {
+  const s = dataSt.air; s.busy = true; s.pre = null; s.msg = 'Checking the file…'; dataRender();
+  try {
+    await ensureFreshToken();
+    const spec = airCfg(), url = dataAirTable(); if (!url) throw new Error('Enter the details table URL first (Airports tab).');
+    const { headers, objs } = csvObjects(await file.text());
+    if (!headers.includes(spec.idField)) throw new Error(`The file needs an ${spec.idField} column.`);
+    const meta = await agoCall(url, {}, 'GET'), fmap = airFieldMap(meta);
+    const skipCols = new Set([spec.idField, spec.linkField, 'objectid']);
+    const cols = headers.filter(h => fmap[h] && !skipCols.has(h) && fmap[h].editable !== false); const ignored = headers.filter(h => h && !cols.includes(h) && !skipCols.has(h));
+    const cur = await dataQueryAll(url, '1=1', '*'); const byId = new Map(cur.map(f => [String(f.attributes[spec.idField] || '').toUpperCase(), f.attributes]));
+    const probs = [], updates = [], adds = [], seen = new Set(); let same = 0;
+    objs.forEach((row, i) => {
+      const label = `Row ${i + 2}`, id = String(row[spec.idField] || '').trim().toUpperCase();
+      if (!id) return probs.push(`${label}: no ${spec.idField}`);
+      if (seen.has(id)) return probs.push(`${label}: ${id} appears twice`); seen.add(id);
+      const c = byId.get(id);
+      if (c) {
+        const ch = dataChange(row, c, cols, fmap, s.clear, probs, `${label} (${id})`);
+        if (Object.keys(ch).length) {
+          if (fmap.survey_status && !('survey_status' in ch) && (c.survey_status || 'Placeholder') === 'Placeholder' && Object.values(ch).some(v => v !== null)) ch.survey_status = 'Partial';
+          updates.push({ attributes: { OBJECTID: c.OBJECTID ?? c.objectid, ...ch }, n: id });
+        } else same++;
+      } else {
+        const guid = String(row[spec.linkField] || '').trim();
+        if (!guid) return probs.push(`${label} (${id}): new airport with no ${spec.linkField}. Add new airports from the Airports tab.`);
+        const at = dataChange(row, null, cols, fmap, false, probs, `${label} (${id})`);
+        at[spec.idField] = id; at[spec.linkField] = guid; if (fmap.survey_status && !at.survey_status) at.survey_status = 'Partial';
+        adds.push({ attributes: at, n: id });
+      }
+    });
+    s.pre = { updates, adds, same, probs, ignored, total: objs.length, cols, url };
+    s.msg = '';
+  } catch (err) { s.msg = 'Couldn’t read that file: ' + err.message; }
+  s.busy = false; dataRender();
+}
+async function airApplyUpload() {
+  const s = dataSt.air, p = s.pre; if (!p) return; s.busy = true; s.msg = 'Saving…'; dataRender();
+  let ok = 0; const fail = [];
+  try {
+    await ensureFreshToken();
+    for (const ch of dataChunks(p.updates, 200)) {
+      const j = await agoCall(`${p.url}/applyEdits`, { updates: JSON.stringify(ch.map(u => ({ attributes: u.attributes }))), rollbackOnFailure: 'true' });
+      (j.updateResults || []).forEach(r => r.success ? ok++ : fail.push((r.error && r.error.description) || 'rejected'));
+    }
+    for (const ch of dataChunks(p.adds, 200)) {
+      const j = await agoCall(`${p.url}/applyEdits`, { adds: JSON.stringify(ch.map(a => ({ attributes: a.attributes }))), rollbackOnFailure: 'true' });
+      (j.addResults || []).forEach(r => r.success ? ok++ : fail.push((r.error && r.error.description) || 'rejected'));
+    }
+    s.msg = `Saved ${ok} airport${ok === 1 ? '' : 's'}${fail.length ? `; ${fail.length} failed (${[...new Set(fail)].slice(0, 2).join('; ')})` : ''}.`;
+    s.pre = null;
+  } catch (err) { s.msg = `Stopped after ${ok} saved: ${err.message}`; }
+  s.busy = false; dataRender();
+}
+
+function dataCard(key, title, blurb, o) {
+  const s = dataSt[key], p = s.pre, can = !!ROLES.editor;
+  return `<div class="as-step" data-card="${key}"><b>${title}</b><div class="as-note">${blurb}</div>
+    <div class="dt-btns"><button type="button" class="mg-btn" data-act="${key}-down" ${s.busy ? 'disabled' : ''}>Download CSV</button>
+    <label class="mg-btn dt-up ${s.busy || !can ? 'off' : ''}" title="${can ? '' : 'Upload needs edit access'}">Upload CSV…<input type="file" accept=".csv,text/csv" hidden data-act="${key}-file" ${s.busy || !can ? 'disabled' : ''}></label></div>
+    ${can ? '' : '<div class="as-note">Upload is limited to members of the edit group.</div>'}
+    <label class="dt-chk"><input type="checkbox" data-act="${key}-clear" ${s.clear ? 'checked' : ''}> Blank cells clear the existing value (otherwise blanks are left alone)</label>
+    ${o.extra || ''}
+    ${p ? `<div class="dt-pre"><b>${p.total} rows read:</b> ${p.updates.length} to update${p.adds.length ? `, ${p.adds.length} to add` : ''}, ${p.same} unchanged${p.probs.length ? `, <span class="dt-bad">${p.probs.length} problem${p.probs.length === 1 ? '' : 's'}</span>` : ''}.
+      ${p.ignored.length ? `<div class="as-sub">Ignored columns: ${p.ignored.slice(0, 12).map(escapeHtml).join(', ')}${p.ignored.length > 12 ? '…' : ''}</div>` : ''}
+      ${p.probs.length ? `<div class="dt-probs">${p.probs.slice(0, 8).map(escapeHtml).join('<br>')}${p.probs.length > 8 ? `<br>…and ${p.probs.length - 8} more` : ''}</div>` : ''}
+      <div class="dt-btns"><button type="button" class="mg-btn" data-act="${key}-apply" ${s.busy || !(p.updates.length + p.adds.length) ? 'disabled' : ''}>Apply ${p.updates.length + p.adds.length} change${p.updates.length + p.adds.length === 1 ? '' : 's'}</button>
+      <button type="button" class="mg-btn rm" data-act="${key}-cancel">Cancel</button></div>
+      <div class="as-sub">Rows with problems are skipped; nothing else is changed.</div></div>` : ''}
+    <div class="as-log" role="status">${s.busy ? '<i>Working…</i> ' : ''}${escapeHtml(s.msg || '')}</div></div>`;
+}
+function renderDataTab(body) {
+  if (!body) return;
+  const a = airCfg();
+  body.innerHTML = `<div class="as-wrap"><p class="as-p">Download to a spreadsheet, edit, and upload it back. You’ll see a summary before anything is saved.</p>
+    ${dataCard('master', 'Critical2TN master layer', 'All records and fields as a CSV. On upload, rows are matched by <b>OBJECTID</b> and only attribute changes are saved (locations and system fields aren’t touched). Deleting isn’t supported.',
+      { extra: `<label class="dt-chk"><input type="checkbox" data-act="master-adds" ${dataSt.master.adds ? 'checked' : ''}> Rows with no OBJECTID are new records (need asset_name, latitude, longitude)</label>` })}
+    ${a ? dataCard('air', 'Airport details', 'One row per airport, matched by <b>airport_id</b>. New airports must already exist in the table; add them from the Airports tab.', {
+      extra: (a.editUrl || a.url) ? '' : `<label class="ef"><span>Details table URL</span><input type="url" data-act="air-url" value="${escapeHtml(airSt.tableUrl)}" placeholder="https://services1.arcgis.com/…/FeatureServer/0"></label>` }) : ''}</div>`;
+  body.querySelectorAll('[data-act]').forEach(el => {
+    const [k, act] = el.dataset.act.split('-'), s = dataSt[k] || dataSt.air;
+    const run = { 'master-down': masterDownload, 'master-apply': masterApply, 'air-down': airDownload, 'air-apply': airApplyUpload };
+    if (el.tagName === 'BUTTON' && run[el.dataset.act]) el.onclick = run[el.dataset.act];
+    if (act === 'cancel') el.onclick = () => { s.pre = null; s.msg = ''; dataRender(); };
+    if (act === 'clear') el.onchange = () => { s.clear = el.checked; };
+    if (act === 'adds') el.onchange = () => { s.adds = el.checked; };
+    if (act === 'url') el.oninput = () => { airSt.tableUrl = el.value.trim().replace(/\/+$/, ''); };
+    if (act === 'file') el.onchange = () => { const f = el.files && el.files[0]; el.value = ''; if (f) (k === 'master' ? masterPreview : airPreview)(f); };
+  });
 }
 async function startApp() {
   buildFilterGrid();
