@@ -228,6 +228,62 @@
   .rl-sw.img { border-radius: 3px; background: linear-gradient(135deg, var(--c), transparent); border: 1px solid var(--c); box-shadow: none; }
   .rl-clear { width: 100%; margin: 6px 0 4px; padding: 12px; border: 1.5px solid var(--border); background: var(--surface2); border-radius: 10px; font-weight: 700; font-size: 13px; color: var(--text2); cursor: pointer; font-family: inherit; }
 
+
+  /* ── Draw an area / export ───────────────────────────────────── */
+  #draw-toggle {
+    position: absolute; top: 100px; left: 12px; z-index: 1000;
+    background: white; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px;
+    display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.18); min-height: 36px;
+  }
+  #draw-toggle:hover, #draw-toggle.on { background: var(--tema-red); color: white; border-color: var(--tema-red); }
+  #draw-toggle:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  /* Layers + Draw sit in a column under the zoom control (top-right), icon-only */
+  #layers-toggle, #draw-toggle { left: auto; right: 10px; width: 34px; height: 34px; min-height: 34px; padding: 0; justify-content: center; border-radius: 4px; border: 2px solid rgba(0,0,0,0.2); box-shadow: none; background-clip: padding-box; }
+  #layers-toggle { top: 88px; }
+  #draw-toggle { top: 128px; }
+  #layers-toggle > span:not(#layers-count), #draw-toggle > span { display: none; }
+  #layers-toggle svg, #draw-toggle svg { width: 18px; height: 18px; }
+  #layers-count { position: absolute; top: -8px; left: -8px; }
+  #draw-bar { position: absolute; left: 12px; right: 72px; bottom: 12px; z-index: 1000; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    background: rgba(255,255,255,0.96); border: 1px solid var(--border); border-radius: 12px; padding: 7px 8px; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  #draw-bar[hidden] { display: none; }
+  .dmsg { font-size: 12px; font-weight: 700; color: var(--text); flex: 1 1 100%; }
+  .db { font-family: inherit; font-size: 12px; font-weight: 700; padding: 8px 12px; min-height: 36px; border-radius: 8px; border: 1.5px solid var(--tema-blue); background: #fff; color: var(--tema-blue); cursor: pointer; }
+  .db.pri { background: var(--tema-blue); color: #fff; }
+  .db.ghost { border-color: var(--border); color: var(--text2); }
+  #map.drawing, #map.drawing .leaflet-grab { cursor: crosshair; }
+  #map.drawing .leaflet-marker-icon, #map.drawing .leaflet-interactive { pointer-events: none !important; }
+  #export-sheet { position: fixed; inset: 0; z-index: 2000; pointer-events: none; }
+  #export-sheet[hidden] { display: none; }
+  #export-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.45); opacity: 0; transition: opacity 0.3s; }
+  #export-content { position: absolute; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; background: var(--surface);
+    border-radius: 20px 20px 0 0; padding: 0 0 max(16px, env(safe-area-inset-bottom)); transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); max-height: 82vh; overflow-y: auto; overscroll-behavior: contain; }
+  #export-sheet.open { pointer-events: all; }
+  #export-sheet.open #export-overlay { opacity: 1; }
+  #export-sheet.open #export-content { transform: translateY(0); }
+  #export-body { padding: 8px 16px 6px; }
+  .ex-card { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; padding: 4px 0; }
+  .ex-card.dis { opacity: .6; }
+  .ex-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; font-weight: 700; font-size: 14px; gap: 8px; }
+  .ex-head input { width: 20px; height: 20px; accent-color: var(--tema-blue); vertical-align: -4px; margin-right: 4px; }
+  .ex-sec { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--border); font-size: 13px; font-weight: 600; min-height: 40px; cursor: pointer; }
+  .ex-sec span { flex: 1; }
+  .ex-sec b { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+  .ex-sec input { width: 20px; height: 20px; accent-color: var(--tema-blue); margin: 0; }
+  .ex-none { padding: 6px 14px 8px; font-size: 12px; color: var(--text3); }
+  .ex-none[data-s="error"], .ex-none[data-s="unavailable"] { color: #b3261e; }
+  .ex-link { background: none; border: 0; color: var(--tema-blue); font-weight: 700; text-decoration: underline; cursor: pointer; font-family: inherit; font-size: 12px; }
+  .ex-total { font-size: 13px; font-weight: 700; margin: 10px 4px 8px; }
+  .ex-total.over { color: #b3261e; }
+  .ex-btns { display: flex; gap: 8px; }
+  .ex-btns button { font-family: inherit; font-weight: 700; font-size: 14px; border-radius: 10px; padding: 13px; min-height: 48px; cursor: pointer; }
+  .ex-pri { flex: 2; background: var(--tema-blue); color: #fff; border: 0; }
+  .ex-sec2 { flex: 1; background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+  .ex-btns button:disabled { opacity: .4; cursor: not-allowed; }
+  .ex-note { font-size: 11px; color: var(--text3); margin: 10px 4px 2px; line-height: 1.4; }
+
   /* ── Map ─────────────────────────────────────────────────── */
   #map-container { flex-shrink: 0; height: 36vh; position: relative; }
   #map { width: 100%; height: 100%; }
@@ -493,6 +549,11 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/><path d="m2 17.5 10 5 10-5" opacity=".5"/></svg>
       <span>Layers</span><span id="layers-count" hidden>0</span>
     </button>
+    <button id="draw-toggle" type="button" onclick="toggleDraw()" aria-label="Draw an area to export" title="Draw an area to export">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polygon points="12 3 21 9 18 20 6 20 3 9" stroke-dasharray="3 2.5"/></svg>
+      <span>Draw</span>
+    </button>
+    <div id="draw-bar" role="toolbar" aria-label="Draw tools" hidden></div>
     <button id="fab-locate" onclick="recenterOnUser()" title="Re-center on my location" aria-label="Re-center on my location">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
     </button>
@@ -543,6 +604,18 @@
     <div class="sheet-handle" aria-hidden="true"></div>
     <button class="sheet-close-btn" onclick="closeLayersSheet()" aria-label="Close map layers">×</button>
     <div id="layers-body"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     EXPORT SHEET (area drawn on the map -> CSV)
+     ════════════════════════════════════════════════════════════ -->
+<div id="export-sheet" role="dialog" aria-modal="true" aria-labelledby="export-title" hidden>
+  <div id="export-overlay" onclick="closeExportSheet()"></div>
+  <div id="export-content">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <button class="sheet-close-btn" onclick="closeExportSheet()" aria-label="Close export">×</button>
+    <div id="export-body"></div>
   </div>
 </div>
 
@@ -2311,7 +2384,7 @@ function refEnsureLayer(d, st) {
     pane: 'refPane', renderer: refRenderer,
     pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: refRenderer, pane: 'refPane', radius: d.radius || 6, fillColor: d.color, fillOpacity: 0.95, color: '#fff', weight: 1.5 }),
     style: () => ({ color: d.color, weight: d.geom === 'line' ? 2.5 : 1.5, opacity: 0.9, fillColor: d.color, fillOpacity: d.geom === 'poly' ? 0.16 : 0.2 }),
-    onEachFeature: (f, l) => l.bindPopup(() => refPopupHtml(d, f, st), { maxWidth: 270, autoPanPaddingTopLeft: [60, 60], autoPanPaddingBottomRight: [60, 60] }),
+    onEachFeature: (f, l) => { l.bindPopup(() => refPopupHtml(d, f, st), { maxWidth: 270, autoPanPaddingTopLeft: [60, 60], autoPanPaddingBottomRight: [60, 60] }); l.on('click', () => { if (window.__drawing) map.closePopup(); }); },
   });
 }
 function refSetStatus(key, status, extra) {
@@ -2504,10 +2577,320 @@ async function initRefLayers() {
   refUpdateUi();
 }
 
+// ════════════════════════════════════════════════════════════════
+//  DRAW AN AREA → EXPORT CSV  (Critical2TN assets + Tier II)
+//  --------------------------------------------------------------
+//   • Draw a polygon, rectangle or circle on the map.
+//   • Critical2TN assets inside it come from the data already loaded
+//     (instant, works offline). Tier II is queried from the service with
+//     the shape itself, so it does not depend on the current zoom/view.
+//   • Only what the signed-in account can already read can be exported —
+//     ArcGIS sharing still decides that (county users: their county).
+//   • One CSV, one row per Critical2TN asset and one row per Tier II
+//     chemical record, with a 'dataset' column. UTF-8 with BOM so Excel
+//     opens it cleanly; text cells that could run as a spreadsheet formula
+//     are neutralised.
+//   • Capped (EXPORT_CAP) and blocked above it — never silently truncated.
+// ════════════════════════════════════════════════════════════════
+const EXPORT_CAP = 5000;
+const EXPORT_NOTICE = 'SENSITIVE - Critical infrastructure information. Handle and share per TEMA/OHS policy.';
+const T2_FIELDS = ['OBJECTID','FacilityId','State_Facility_ID','FacilityName','Company_Name','Filing_Year','Filing_Type','Street','City','County','State','Zip',
+                   'Latitude','Longitude','ChemicalName','CASNumber','MaxDailyQty','AvgDailyQty','MaxAmountInLargestContainer','EHS','ContactInfo'];
+
+const drawState = { mode: 'off', shape: null, pts: [], layer: null, ring: null, ctl: null,
+                    core: [], coreOff: new Set(), t2: [], t2Status: 'idle', t2Off: false, areaSqMi: 0, busy: false };
+
+// ── geometry helpers
+function ringFromCircle(center, radiusM, n = 72) {
+  const R = 6378137, lat1 = center.lat * Math.PI / 180, lon1 = center.lng * Math.PI / 180, ring = [];
+  for (let i = 0; i < n; i++) {
+    const brg = (i / n) * 2 * Math.PI, d = radiusM / R;
+    const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg));
+    const lon2 = lon1 + Math.atan2(Math.sin(brg) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+    ring.push([lon2 * 180 / Math.PI, lat2 * 180 / Math.PI]);
+  }
+  return ring;
+}
+function pointInRing(x, y, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function ringAreaSqMi(ring) {
+  const P = ll => L.CRS.EPSG3857.project(L.latLng(ll[1], ll[0]));
+  let s = 0; const pts = ring.map(P);
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) s += (pts[j].x * pts[i].y) - (pts[i].x * pts[j].y);
+  const lat = ring.reduce((a, p) => a + p[1], 0) / ring.length, k = Math.cos(lat * Math.PI / 180);
+  return Math.abs(s / 2) * k * k / 2589988.11;
+}
+
+// ── drawing UI
+function initDraw() {
+  drawState.layer = L.layerGroup().addTo(map);
+  map.on('click', onDrawClick);
+  renderDrawBar();
+}
+function drawRender() {
+  const g = drawState.layer; g.clearLayers();
+  const style = { color: '#BF0A30', weight: 3, dashArray: '7 6', fillColor: '#BF0A30', fillOpacity: 0.12, interactive: false };
+  if (drawState.ring) {
+    L.polygon(drawState.ring.map(p => [p[1], p[0]]), { ...style, dashArray: null }).addTo(g);
+    return;
+  }
+  const pts = drawState.pts;
+  if (drawState.shape === 'polygon') {
+    if (pts.length >= 3) L.polygon(pts, style).addTo(g); else if (pts.length === 2) L.polyline(pts, style).addTo(g);
+  }
+  pts.forEach((p, i) => L.circleMarker(p, { radius: i === 0 ? 8 : 6, color: '#fff', weight: 2, fillColor: '#BF0A30', fillOpacity: 1, interactive: false }).addTo(g));
+}
+function setDrawMode(mode, shape) {
+  drawState.mode = mode;
+  if (shape !== undefined) drawState.shape = shape;
+  window.__drawing = mode === 'drawing';
+  document.getElementById('map').classList.toggle('drawing', mode === 'drawing');
+  map.doubleClickZoom[mode === 'drawing' ? 'disable' : 'enable']();
+  if (mode === 'drawing') map.closePopup();
+  renderDrawBar();
+}
+function toggleDraw() {
+  if (drawState.mode === 'off') setDrawMode('choose');
+  else cancelDraw();
+}
+function cancelDraw() {
+  if (drawState.ctl) drawState.ctl.abort();
+  drawState.pts = []; drawState.ring = null; drawState.shape = null; drawState.t2 = []; drawState.core = [];
+  drawState.layer.clearLayers();
+  closeExportSheet(true);
+  setDrawMode('off');
+}
+function startShape(shape) { drawState.pts = []; drawState.ring = null; drawRender(); setDrawMode('drawing', shape); }
+function undoPoint() { drawState.pts.pop(); drawRender(); renderDrawBar(); }
+function onDrawClick(e) {
+  if (drawState.mode !== 'drawing') return;
+  drawState.pts.push(e.latlng);
+  const pts = drawState.pts;
+  if (drawState.shape === 'rectangle' && pts.length === 2) {
+    const b = L.latLngBounds(pts[0], pts[1]);
+    return finishShape([[b.getWest(), b.getSouth()], [b.getEast(), b.getSouth()], [b.getEast(), b.getNorth()], [b.getWest(), b.getNorth()]]);
+  }
+  if (drawState.shape === 'circle' && pts.length === 2) {
+    const r = pts[0].distanceTo(pts[1]);
+    if (r < 20) { drawState.pts.pop(); return; }
+    return finishShape(ringFromCircle(pts[0], r));
+  }
+  drawRender(); renderDrawBar();
+}
+function finishPolygon() {
+  if (drawState.pts.length < 3) return;
+  finishShape(drawState.pts.map(p => [p.lng, p.lat]));
+}
+function finishShape(ring) {
+  drawState.ring = ring; drawState.pts = [];
+  drawState.areaSqMi = ringAreaSqMi(ring);
+  drawRender(); setDrawMode('done');
+  runExportQuery(); openExportSheet();
+}
+function renderDrawBar() {
+  const bar = document.getElementById('draw-bar'), btn = document.getElementById('draw-toggle');
+  if (!bar) return;
+  const m = drawState.mode, n = drawState.pts.length;
+  if (btn) btn.classList.toggle('on', m !== 'off');
+  bar.hidden = m === 'off';
+  const b = (label, fn, cls = '') => `<button type="button" class="db ${cls}" onclick="${fn}">${label}</button>`;
+  let html = '';
+  if (m === 'choose') html = `<span class="dmsg">Pick a shape</span>${b('Polygon', "startShape('polygon')")}${b('Rectangle', "startShape('rectangle')")}${b('Circle', "startShape('circle')")}${b('Cancel', 'cancelDraw()', 'ghost')}`;
+  if (m === 'drawing') {
+    const msg = drawState.shape === 'polygon' ? (n < 3 ? `Tap the map to add corners (${n}/3 min)` : `${n} corners — tap more, or Finish`)
+              : drawState.shape === 'rectangle' ? (n ? 'Tap the opposite corner' : 'Tap one corner')
+              : (n ? 'Tap to set the edge of the circle' : 'Tap the center');
+    html = `<span class="dmsg">${msg}</span>${n ? b('Undo', 'undoPoint()') : ''}${drawState.shape === 'polygon' && n >= 3 ? b('Finish', 'finishPolygon()', 'pri') : ''}${b('Cancel', 'cancelDraw()', 'ghost')}`;
+  }
+  if (m === 'done') html = `${b('Export…', 'openExportSheet()', 'pri')}${b('Redraw', "setDrawMode('choose')")}${b('Clear', 'cancelDraw()', 'ghost')}`;
+  bar.innerHTML = html;
+}
+
+// ── data inside the shape
+function coreInShape() {
+  const ring = drawState.ring; if (!ring) return [];
+  let w = 180, e = -180, s = 90, n = -90;
+  ring.forEach(p => { w = Math.min(w, p[0]); e = Math.max(e, p[0]); s = Math.min(s, p[1]); n = Math.max(n, p[1]); });
+  return assets.filter(a => a.lng >= w && a.lng <= e && a.lat >= s && a.lat <= n && pointInRing(a.lng, a.lat, ring));
+}
+async function refPost(url, params, signal) {
+  const send = refSendsToken(url) && TOKEN;
+  const body = () => new URLSearchParams(send ? { ...params, token: TOKEN.accessToken } : params);
+  let res = await fetch(url, { method: 'POST', body: body(), signal });
+  if (!res.ok) throw Object.assign(new Error('HTTP ' + res.status), { code: res.status });
+  let json = await res.json();
+  if (json.error && send && (json.error.code === 498 || json.error.code === 499) && TOKEN.refreshToken) {
+    try { saveToken(await refreshAccessToken()); } catch (e) { /* fall through */ }
+    res = await fetch(url, { method: 'POST', body: body(), signal });
+    json = await res.json();
+  }
+  if (json.error) throw Object.assign(new Error(json.error.message || 'ArcGIS error'), { code: json.error.code });
+  return json;
+}
+async function runExportQuery() {
+  if (drawState.ctl) drawState.ctl.abort();
+  const ctl = new AbortController(); drawState.ctl = ctl;
+  drawState.core = coreInShape(); drawState.coreOff = new Set(); drawState.t2 = []; drawState.t2Off = false;
+  drawState.t2Status = 'loading'; renderExportSheet();
+  const url = REF_BY_KEY.tier2.url + '/query', ring = drawState.ring;
+  const base = { where: refCountyWhere(REF_BY_KEY.tier2) || '1=1', geometry: JSON.stringify({ rings: [ring.concat([ring[0]])], spatialReference: { wkid: 4326 } }),
+                 geometryType: 'esriGeometryPolygon', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+                 returnGeometry: 'true', outSR: '4326', f: 'json', orderByFields: 'OBJECTID' };
+  try {
+    let fields = T2_FIELDS.join(','), out = [], offset = 0, more = true, guard = 12;
+    while (more && guard-- > 0 && out.length <= EXPORT_CAP) {
+      let json;
+      try { json = await refPost(url, { ...base, outFields: fields, resultOffset: String(offset), resultRecordCount: '1000' }, ctl.signal); }
+      catch (err) {                                          // a field name the service doesn't have → retry once with all fields
+        if (fields !== '*' && err.code === 400) { fields = '*'; continue; }
+        throw err;
+      }
+      const f = json.features || []; out.push(...f); offset += f.length;
+      more = json.exceededTransferLimit === true && f.length > 0;
+    }
+    if (drawState.ctl !== ctl) return;
+    drawState.t2 = out; drawState.t2Status = 'ok';
+  } catch (err) {
+    if (drawState.ctl !== ctl) return;
+    const denied = err.code === 403 || err.code === 498 || err.code === 499 || /permission|not authorized|token/i.test(err.message || '');
+    console.warn('[Critical2TN] Tier II export query failed', err);
+    drawState.t2Status = denied ? 'unavailable' : 'error';
+  }
+  renderExportSheet();
+}
+
+// ── export sheet
+function exportSelection() {
+  const core = drawState.core.filter(a => !drawState.coreOff.has(sectorOf(a).key));
+  const t2 = drawState.t2Off || drawState.t2Status !== 'ok' ? [] : drawState.t2;
+  return { core, t2, total: core.length + t2.length };
+}
+function renderExportSheet() {
+  const body = document.getElementById('export-body'); if (!body) return;
+  const sel = exportSelection(), over = sel.total > EXPORT_CAP;
+  const bySector = {}; drawState.core.forEach(a => { const k = sectorOf(a).key; bySector[k] = (bySector[k] || 0) + 1; });
+  const t2Fac = new Set(drawState.t2.map(f => { const p = f.attributes || {}; return p.FacilityId || p.State_Facility_ID || p.FacilityName; })).size;
+  const t2Line = { loading: 'Checking Tier II…', unavailable: 'Not available to your account', error: 'Couldn’t reach Tier II',
+                   ok: `${t2Fac.toLocaleString()} facilit${t2Fac === 1 ? 'y' : 'ies'} · ${drawState.t2.length.toLocaleString()} chemical record${drawState.t2.length === 1 ? '' : 's'}` }[drawState.t2Status] || '';
+  const secRows = Object.keys(bySector).sort((a, b) => bySector[b] - bySector[a]).map(k => {
+    const s = SECTORS[k] || UNKNOWN_SECTOR;
+    return `<label class="ex-sec"><input type="checkbox" ${drawState.coreOff.has(k) ? '' : 'checked'} onchange="toggleExportSector('${k}', this.checked)">${iconHTML(k, 20)}<span>${escapeHtml(s.label)}</span><b>${bySector[k]}</b></label>`;
+  }).join('');
+  body.innerHTML = `
+    <h2 id="export-title" class="rl-title">Export area</h2>
+    <div class="rl-sub">${drawState.areaSqMi < 0.1 ? '< 0.1' : drawState.areaSqMi.toFixed(drawState.areaSqMi < 10 ? 1 : 0)} sq mi · only data your account can already see${refCountyWhere(REF_BY_KEY.tier2) ? ' · Tier II limited to your county' : ''}</div>
+    <div class="ex-card">
+      <div class="ex-head"><span>Critical2TN assets</span><b>${drawState.core.length.toLocaleString()}</b></div>
+      ${secRows || '<div class="ex-none">None in this area</div>'}
+    </div>
+    <div class="ex-card ${drawState.t2Status === 'unavailable' ? 'dis' : ''}">
+      <label class="ex-head"><span><input type="checkbox" ${drawState.t2Off || drawState.t2Status !== 'ok' ? '' : 'checked'} ${drawState.t2Status !== 'ok' ? 'disabled' : ''} onchange="toggleExportT2(this.checked)"> Tier II HAZMAT</span><b class="ex-t2" data-s="${drawState.t2Status}"></b></label>
+      <div class="ex-none" data-s="${drawState.t2Status}">${escapeHtml(t2Line)}${drawState.t2Status === 'error' ? ' <button class="ex-link" onclick="runExportQuery()">Retry</button>' : ''}</div>
+    </div>
+    <div class="ex-total ${over ? 'over' : ''}">${over
+      ? `${sel.total.toLocaleString()} rows is over the ${EXPORT_CAP.toLocaleString()}-row limit. Draw a smaller area or untick something.`
+      : `${sel.total.toLocaleString()} row${sel.total === 1 ? '' : 's'} will be exported (CSV).`}</div>
+    <div class="ex-btns">
+      <button class="ex-pri" type="button" ${sel.total === 0 || over || drawState.t2Status === 'loading' ? 'disabled' : ''} onclick="exportCsv(true)">Share / save CSV</button>
+      <button class="ex-sec2" type="button" ${sel.total === 0 || over || drawState.t2Status === 'loading' ? 'disabled' : ''} onclick="exportCsv(false)">Download</button>
+    </div>
+    <div class="ex-note">${escapeHtml(EXPORT_NOTICE)}</div>`;
+}
+function toggleExportSector(k, on) { on ? drawState.coreOff.delete(k) : drawState.coreOff.add(k); renderExportSheet(); }
+function toggleExportT2(on) { drawState.t2Off = !on; renderExportSheet(); }
+function _exportKey(e) { if (e.key === 'Escape') closeExportSheet(); }
+function openExportSheet() {
+  const sheet = document.getElementById('export-sheet'); if (!sheet || !drawState.ring) return;
+  renderExportSheet();
+  sheet.removeAttribute('hidden');
+  requestAnimationFrame(() => sheet.classList.add('open'));
+  document.addEventListener('keydown', _exportKey);
+}
+function closeExportSheet(silent) {
+  const sheet = document.getElementById('export-sheet'); if (!sheet) return;
+  sheet.classList.remove('open');
+  document.removeEventListener('keydown', _exportKey);
+  setTimeout(() => { if (!sheet.classList.contains('open')) sheet.setAttribute('hidden', ''); }, 360);
+}
+
+// ── CSV
+function csvCell(v, isText = true) {
+  if (v == null || v === '') return '';
+  let s = String(v);
+  if (isText && /^[=+\-@\t\r]/.test(s)) s = "'" + s;           // stop spreadsheet formula injection
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+const _pv = (p, name) => { if (!p) return ''; if (p[name] != null) return p[name]; const k = Object.keys(p).find(x => x.toLowerCase() === name.toLowerCase()); return k ? p[k] : ''; };
+const EXPORT_COLS = [
+  ['dataset',            r => r.t2 ? 'Tier II' : 'Critical2TN'],
+  ['name',               r => r.t2 ? _pv(r.p, 'FacilityName') : r.a.name],
+  ['cisa_sector',        r => r.t2 ? '' : sectorOf(r.a).label],
+  ['sector_as_entered',  r => r.t2 ? '' : r.a.sector],
+  ['lifeline',           r => r.t2 ? '' : r.a.lifelineRaw],
+  ['asset_type',         r => r.t2 ? '' : r.a.assetType],
+  ['component',          r => r.t2 ? '' : r.a.component],
+  ['subcomponent',       r => r.t2 ? '' : r.a.subcomp],
+  ['address',            r => r.t2 ? _pv(r.p, 'Street') : r.a.address],
+  ['city',               r => r.t2 ? _pv(r.p, 'City') : r.a.city],
+  ['state',              r => r.t2 ? _pv(r.p, 'State') : r.a.state],
+  ['zip',                r => r.t2 ? _pv(r.p, 'Zip') : r.a.zip],
+  ['county',             r => r.t2 ? _pv(r.p, 'County') : r.a.county],
+  ['region',             r => r.t2 ? '' : r.a.region],
+  ['latitude',           r => r.t2 ? (r.f.geometry ? r.f.geometry.y : _pv(r.p, 'Latitude')) : r.a.lat, false],
+  ['longitude',          r => r.t2 ? (r.f.geometry ? r.f.geometry.x : _pv(r.p, 'Longitude')) : r.a.lng, false],
+  ['hsip_id',            r => r.t2 ? '' : r.a.hsipId],
+  ['contact_name',       r => r.t2 ? '' : r.a.contactName],
+  ['contact_agency',     r => r.t2 ? '' : r.a.contactAgency],
+  ['contact_phone',      r => r.t2 ? '' : r.a.contactPhone],
+  ['contact_email',      r => r.t2 ? '' : r.a.contactEmail],
+  ['t2_company',         r => r.t2 ? _pv(r.p, 'Company_Name') : ''],
+  ['t2_facility_id',     r => r.t2 ? (_pv(r.p, 'FacilityId') || _pv(r.p, 'State_Facility_ID')) : ''],
+  ['t2_chemical',        r => r.t2 ? _pv(r.p, 'ChemicalName') : ''],
+  ['t2_cas_number',      r => r.t2 ? _pv(r.p, 'CASNumber') : ''],
+  ['t2_max_daily_qty',   r => r.t2 ? _pv(r.p, 'MaxDailyQty') : ''],
+  ['t2_avg_daily_qty',   r => r.t2 ? _pv(r.p, 'AvgDailyQty') : ''],
+  ['t2_max_container',   r => r.t2 ? _pv(r.p, 'MaxAmountInLargestContainer') : ''],
+  ['t2_ehs',             r => r.t2 ? _pv(r.p, 'EHS') : ''],
+  ['t2_filing_year',     r => r.t2 ? _pv(r.p, 'Filing_Year') : ''],
+  ['t2_filing_type',     r => r.t2 ? _pv(r.p, 'Filing_Type') : ''],
+  ['t2_contact_info',    r => r.t2 ? _pv(r.p, 'ContactInfo') : ''],
+];
+function buildCsv() {
+  const sel = exportSelection(), now = new Date().toISOString(), who = (TOKEN && TOKEN.username) || '';
+  const rows = [...sel.core.map(a => ({ a })), ...sel.t2.map(f => ({ t2: true, f, p: f.attributes || {} }))];
+  const head = EXPORT_COLS.map(c => c[0]).concat(['exported_by', 'exported_utc', 'handling_notice']).join(',');
+  const lines = rows.map(r => EXPORT_COLS.map(c => csvCell(c[1](r), c[2] !== false)).concat([csvCell(who), csvCell(now), csvCell(EXPORT_NOTICE)]).join(','));
+  return '﻿' + [head, ...lines].join('\r\n') + '\r\n';
+}
+async function exportCsv(preferShare) {
+  const sel = exportSelection();
+  if (!sel.total || sel.total > EXPORT_CAP) return;
+  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  const name = `Critical2TN_export_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.csv`;
+  const blob = new Blob([buildCsv()], { type: 'text/csv;charset=utf-8' });
+  if (preferShare && navigator.canShare && navigator.share) {
+    const file = new File([blob], name, { type: 'text/csv' });
+    if (navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Critical2TN export', text: EXPORT_NOTICE }); return; }
+      catch (err) { if (err && err.name === 'AbortError') return; /* otherwise fall back to download */ }
+    }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 async function startApp() {
   buildFilterGrid();
   bindListHandlers();
   initMap();
+  initDraw();                 // draw an area -> export CSV
   initRefLayers();            // reference layers (off by default; see REFERENCE LAYERS)
   await fetchAssets();
   // Discover layer capabilities (hasAttachments, etc.) — runs in parallel
