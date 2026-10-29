@@ -21,6 +21,7 @@
 <title>Critical2TN</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -338,6 +339,28 @@
   .photo-add { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
   .photo-btn { display: inline-flex; align-items: center; font: 700 13px 'DM Sans', sans-serif; padding: 9px 14px; min-height: 40px; border-radius: 10px; border: 1.5px dashed var(--tema-blue); color: var(--tema-blue); cursor: pointer; }
   .photo-msg { font-size: 12px; color: var(--text3); }
+  .mg-stg { color: #8a5a00; }
+  .mg-tabs { display: flex; gap: 6px; padding: 10px 16px 0; max-width: 720px; margin: 0 auto; }
+  .mg-tab { flex: 1; font: 700 13px 'DM Sans', sans-serif; padding: 10px; min-height: 42px; border-radius: 10px; border: 1.5px solid var(--border); background: #fff; color: var(--text2); cursor: pointer; }
+  .mg-tab.on { background: var(--tema-blue); border-color: var(--tema-blue); color: #fff; }
+  .ref-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); flex-shrink: 0; box-sizing: border-box; }
+  .la-row { padding: 10px 14px; border-top: 1px solid var(--border); }
+  .la-name { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+  .la-name small { font-weight: 500; color: var(--text3); }
+  .la-chg { font-size: 10px; font-weight: 700; background: #fff4de; border: 1px solid #f0d49a; color: #5c4200; border-radius: 6px; padding: 0 6px; }
+  .la-ctl { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+  .la-ctl label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .4px; }
+  .la-ctl input[type=color] { width: 46px; height: 36px; padding: 2px; border: 1.5px solid var(--border); border-radius: 8px; background: #fff; }
+  .la-ctl input[type=range] { width: 120px; }
+  .la-ctl output { font: 600 12px 'DM Mono', monospace; color: var(--text2); text-transform: none; }
+  .la-ctl select { font: 600 14px 'DM Sans', sans-serif; padding: 7px 8px; min-height: 36px; border: 1.5px solid var(--border); border-radius: 8px; background: #fff; max-width: 190px; }
+  .la-reset { font: 700 12px 'DM Sans', sans-serif; padding: 8px 12px; min-height: 36px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; }
+  .la-bar { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: center; background: var(--bg); padding: 10px 4px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); margin-top: 10px; }
+  .la-bar button { font-family: inherit; font-weight: 700; font-size: 13px; border-radius: 10px; padding: 11px 14px; min-height: 44px; cursor: pointer; }
+  .la-bar button:disabled { opacity: .4; cursor: not-allowed; }
+  .la-bar .ex-pri { flex: 0 0 auto; }
+  .la-msg { flex: 1; font-size: 12px; color: var(--text3); line-height: 1.35; }
+  .la-msg.ok { color: #0b5a2b; } .la-msg.bad { color: #842029; }
 
   /* ── Map ─────────────────────────────────────────────────── */
   #map-container { flex-shrink: 0; height: 36vh; position: relative; }
@@ -514,6 +537,24 @@
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
   .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .ld-chip { display:inline-block; margin-left:8px; padding:2px 9px; border-radius:99px; font:700 11px 'DM Sans',sans-serif; letter-spacing:.02em; text-transform:none; background:#e8eef7; color:var(--tema-blue); vertical-align:middle; }
+  .ld-chip.warn { background:#fff1d6; color:#7a4b00; }
+  .ld-group { margin:8px 0; border:1px solid var(--border, #e3e6ec); border-radius:10px; padding:2px 12px 10px; background:#fff; }
+  .ld-group > summary { cursor:pointer; font:700 13px 'DM Sans',sans-serif; padding:10px 0 6px; min-height:24px; }
+  .ld-none { font-weight:500; color:var(--text3); font-size:12px; margin-left:6px; }
+  .ld-fs { border:1px solid var(--border, #e3e6ec); border-radius:10px; margin:12px 0; padding:6px 12px 10px; }
+  .ld-fs legend { font:700 13px 'DM Sans',sans-serif; padding:0 6px; color:var(--tema-blue); }
+  .edit-form textarea, .edit-form select { width:100%; font:inherit; font-size:16px; padding:10px 12px; border:1.5px solid #c9ced8; border-radius:10px; background:#fff; box-sizing:border-box; }
+  .edit-form input[readonly] { background:#f2f4f8; color:var(--text3); }
+  .as-wrap { padding: 4px 16px 24px; max-width: 720px; margin: 0 auto; }
+  .as-p { font-size: 13.5px; color: var(--text2); line-height: 1.45; }
+  .as-step { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 12px 0; background: #fff; display: grid; gap: 8px; }
+  .as-note { font-size: 12.5px; color: var(--text2); line-height: 1.45; }
+  .as-list { max-height: 46vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .as-row { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .as-main { flex: 1; min-width: 0; } .as-sub { font-size: 11.5px; color: var(--text3); }
+  .as-dec { font: 13px 'DM Sans', sans-serif; padding: 8px; border-radius: 8px; border: 1.5px solid var(--border); background: #fff; min-height: 40px; }
+  .as-log { font-size: 12px; color: var(--text2); line-height: 1.5; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -685,7 +726,8 @@
     <h2 id="manage-title">Manage users</h2>
     <button type="button" class="sheet-close-btn mg-close" onclick="closeManage()" aria-label="Close user management">×</button>
   </div>
-  <div class="mg-intro">Approved Critical2TN users. <b>Grant edit</b> lets someone update asset records, contact details and photos.</div>
+  <div class="mg-tabs" role="tablist"><button type="button" class="mg-tab on" data-tab="users" role="tab" onclick="setManageTab('users')">Users</button><button type="button" class="mg-tab" data-tab="layers" role="tab" onclick="setManageTab('layers')">Map layers</button><button type="button" class="mg-tab" data-tab="airports" role="tab" onclick="setManageTab('airports')">Airports</button></div>
+  <div class="mg-intro" id="mg-intro-users">Approved Critical2TN users. <b>Grant edit</b> lets someone update asset records, contact details and photos.</div>
   <div id="manage-body"></div>
 </div>
 
@@ -1473,6 +1515,7 @@ async function fetchLayerMeta() {
     const data = await arcgisFetch(url);
     LAYER_HAS_ATTACHMENTS = data.hasAttachments === true;
     LAYER_CAPS = data.capabilities ? String(data.capabilities) : null;
+    LAYER_FIELDS = (data.fields || []).map(f => f.name);
     console.info('[Critical2TN] layer hasAttachments =', LAYER_HAS_ATTACHMENTS);
   } catch (err) {
     LAYER_META_ERROR = err.message || String(err);
@@ -2126,6 +2169,7 @@ async function openDetail(id) {
     </div>
     ${detailsSec}
     ${contactSec}
+    <div id="linked-details" data-aid="${escapeHtml(String(a.id))}"></div>
     <div class="sdiv"></div>
     <div class="sec" id="attachments-sec">
       <div class="sec-label">Attachments</div>
@@ -2158,6 +2202,7 @@ async function openDetail(id) {
   // Lazy-load attachments — only fetched when the detail is opened, not on
   // the initial list query (saves bandwidth on big asset sets).
   loadAttachmentsInto(a).then(() => decoratePhotoEditing(a));
+  loadLinkedDetails(a);          // airports etc.: only when config.js lists a matching detailTables entry
 }
 
 async function loadAttachmentsInto(a) {
@@ -2446,7 +2491,7 @@ function refPopupHtml(d, f, st) {
     if (vals.length) listHtml = `<div class="ref-list"><b>${escapeHtml(d.listLabel || d.listField)} (${vals.length})</b><br>${vals.slice(0, 12).map(escapeHtml).join('<br>')}${vals.length > 12 ? `<br>+${vals.length - 12} more` : ''}</div>`;
   }
   return `<div class="pop ref-pop">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="ref-dot" style="background:${d.color}"></span><div class="pop-name">${escapeHtml(title)}</div></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">${refBadgeHtml(d, 20)}<div class="pop-name">${escapeHtml(title)}</div></div>
     <div class="pop-type" style="color:${d.color}">${escapeHtml(d.label)}</div>
     ${rows.map(([k, v]) => `<div class="ref-row"><span>${escapeHtml(k)}</span><span>${v}</span></div>`).join('')}${listHtml}</div>`;
 }
@@ -2460,8 +2505,8 @@ function refEnsureLayer(d, st) {
   }
   st.layer = L.geoJSON(null, {
     pane: 'refPane', renderer: refRenderer,
-    pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: refRenderer, pane: 'refPane', radius: d.radius || 6, fillColor: d.color, fillOpacity: 0.95, color: '#fff', weight: 1.5 }),
-    style: () => ({ color: d.color, weight: d.geom === 'line' ? 2.5 : 1.5, opacity: 0.9, fillColor: d.color, fillOpacity: d.geom === 'poly' ? 0.16 : 0.2 }),
+    pointToLayer: (f, ll) => new RefSymbolMarker(ll, { renderer: refRenderer, pane: 'refPane', radius: d.size || refDefaultSize(d), symbol: d.symbol, fillColor: d.color, fillOpacity: 0.95, color: '#fff', weight: 1.5 }),
+    style: () => ({ color: d.color, weight: d.size || (d.geom === 'line' ? 2.5 : 1.5), opacity: 0.9, fillColor: d.color, fillOpacity: d.geom === 'poly' ? 0.16 : 0.2 }),
     onEachFeature: (f, l) => { l.bindPopup(() => refPopupHtml(d, f, st), { maxWidth: 270, autoPanPaddingTopLeft: [60, 60], autoPanPaddingBottomRight: [60, 60] }); l.on('click', () => { if (window.__drawing) map.closePopup(); }); },
   });
 }
@@ -2603,7 +2648,7 @@ function renderLayersSheet() {
   const countyToggle = USER_SCOPE.type === 'county' ? `
     <label class="rl-county"><input type="checkbox" ${refLimitCounty ? 'checked' : ''} onchange="setRefCountyLimit(this.checked)">
       <span>Limit layers to my county<small>Faster and tidier. Turn off to see neighbouring counties (mutual aid).</small></span></label>` : '';
-  const sw = d => `<span class="rl-sw ${d.type === 'dynamic' || d.type === 'tiles' ? 'img' : (d.geom || 'point')}" style="--c:${d.color}"></span>`;
+  const sw = d => (d.type !== 'dynamic' && d.type !== 'tiles' && !d.geom) ? refBadgeHtml(d, 22) : `<span class="rl-sw ${d.type === 'dynamic' || d.type === 'tiles' ? 'img' : (d.geom || 'point')}" style="--c:${d.color}"></span>`;
   body.innerHTML = `
     <h2 id="layers-title" class="rl-title">Map layers</h2>
     <div class="rl-sub">${scope ? escapeHtml(scope) + ' · ' : ''}Layers load only for what's on screen, and only while switched on.</div>
@@ -2639,6 +2684,7 @@ function closeLayersSheet() {
 }
 
 async function initRefLayers() {
+  Object.keys(REF_SYMBOLS).forEach(refGlyph);                  // pre-load symbol images
   map.createPane('refPane').style.zIndex = 450;                 // above basemap/overlays, below the core markers
   refRenderer = L.canvas({ pane: 'refPane', padding: 0.4, tolerance: 8 });
   REF_LAYERS.forEach(d => { refState[d.key] = { on: false, status: 'off', n: 0 }; });
@@ -2650,7 +2696,7 @@ async function initRefLayers() {
   refTimer = setInterval(() => refreshRefLayers(false, true), 60000);
   refUpdateUi();
   // Learn the user's scope first (max 2.5 s) so a county user's first request is already filtered.
-  await Promise.race([loadUserScope(), new Promise(r => setTimeout(r, 2500))]);
+  await Promise.race([Promise.all([loadUserScope(), loadMapSettings()]), new Promise(r => setTimeout(r, 3000))]);
   if (prefs && Array.isArray(prefs.on)) prefs.on.forEach(k => REF_BY_KEY[k] && setRefLayerOn(k, true, { silent: true }));
   refUpdateUi();
 }
@@ -3015,18 +3061,36 @@ async function exportCsv(preferShare) {
 //     edit group (to add/remove members) and able to see the member lists
 //     of the groups below. The app shows the exact error if not.
 // ════════════════════════════════════════════════════════════════
-const MANAGE_GROUP_ID = 'fb38085094804e58bc02e35d082ec4bf';     // Critical2TN User Management
-const EDIT_GROUP_ID   = '';                                      // TODO: ID of the group that can edit the Critical2TN layer
-// Approved users = members of these groups (everyone promoted out of Staging is in "Secure MFA").
-const MANAGE_LIST_GROUP_IDS = ['dafcbf87b71c48528d197b64785ac10b'];   // Critical2TN Secure MFA
+// ── CONFIG: edit config.js (next to index.html), not this file. These are the fallbacks.
+const C2TN_DEFAULTS = {
+  manageGroupId:    'fb38085094804e58bc02e35d082ec4bf',   // Critical2TN User Management — who sees the Manage button
+  editGroupId:      '',                                    // group that has update rights on the Critical2TN layer (TODO)
+  requireSecureMfa: false,                                 // true = managers/editors must ALSO be in the Secure MFA group,
+                                                           //        and the user list shows Secure MFA members only
+  secureMfaGroupId: 'dafcbf87b71c48528d197b64785ac10b',   // Critical2TN Secure MFA
+  userListGroups: [                                        // approved users = members of these groups (while MFA isn't required)
+    { id: '1b6039b5cda547cfa4eb527518ecf009', label: 'Statewide' },
+    { id: '25ca696fb06f4e64afb2f0450c066d22', label: 'Staging' },
+    { id: 'dafcbf87b71c48528d197b64785ac10b', label: 'Secure MFA' },
+  ],
+  mapSettingsItemId: '',                                   // ArcGIS item (type JSON) that stores shared layer symbols / zoom limits
+};
+const C2TN = Object.assign({}, C2TN_DEFAULTS, window.C2TN_CONFIG || {});
+const MANAGE_GROUP_ID = C2TN.manageGroupId;
+const EDIT_GROUP_ID = C2TN.editGroupId;
+const manageListGroups = () => C2TN.requireSecureMfa
+  ? [{ id: C2TN.secureMfaGroupId, label: 'Secure MFA' }]
+  : (C2TN.userListGroups || []);
 const AGO_REST = 'https://www.arcgis.com/sharing/rest';
 
 const ROLES = { manager: false, editor: false };
+let LAYER_FIELDS = null;                                         // field names on the Critical2TN layer
 let LAYER_CAPS = null;                                           // layer capabilities string, e.g. "Query,Update,Editing"
 function applyRoles() {
   const ids = new Set(USER_SCOPE.groupIds || []);
-  ROLES.manager = ids.has(MANAGE_GROUP_ID);
-  ROLES.editor = !!EDIT_GROUP_ID && ids.has(EDIT_GROUP_ID);
+  const mfaOk = !C2TN.requireSecureMfa || ids.has(C2TN.secureMfaGroupId);
+  ROLES.manager = ids.has(MANAGE_GROUP_ID) && mfaOk;
+  ROLES.editor = !!EDIT_GROUP_ID && ids.has(EDIT_GROUP_ID) && mfaOk;
   const pill = document.getElementById('manage-pill'); if (pill) pill.hidden = !ROLES.manager;
   console.info('[Critical2TN] roles:', JSON.stringify(ROLES));
 }
@@ -3065,16 +3129,21 @@ async function groupMembers(groupId) {
 }
 async function loadManageUsers() {
   const s = manageState; s.loading = true; s.error = ''; s.editErr = ''; renderManage();
-  try {
-    const lists = await Promise.all(MANAGE_LIST_GROUP_IDS.map(groupMembers));
-    const map = new Map();
-    lists.flat().forEach(u => { if (u && u.username && !map.has(u.username)) map.set(u.username, u); });
-    s.users = [...map.values()].map(u => ({ username: u.username, name: u.fullname || u.fullName || u.username, lastLogin: u.lastLogin > 0 ? u.lastLogin : 0, memberType: u.memberType || '' }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (err) {
-    console.warn('[Critical2TN] user list failed', err);
-    s.users = []; s.error = `Couldn’t load the user list: ${err.message}. Your account needs to be able to see the members of the Critical2TN groups.`;
-  }
+  s.listWarn = '';
+  const groups = manageListGroups();
+  const settled = await Promise.allSettled(groups.map(g => groupMembers(g.id)));
+  const map = new Map(), failed = [];
+  settled.forEach((r, i) => {
+    if (r.status !== 'fulfilled') { console.warn('[Critical2TN] members of', groups[i].label, 'failed', r.reason); failed.push(`${groups[i].label} (${r.reason && r.reason.message})`); return; }
+    r.value.forEach(u => {
+      if (!u || !u.username) return;
+      const cur = map.get(u.username) || { username: u.username, name: u.fullname || u.fullName || u.username, lastLogin: u.lastLogin > 0 ? u.lastLogin : 0, tags: [] };
+      cur.tags.push(groups[i].label); map.set(u.username, cur);
+    });
+  });
+  s.users = [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  if (failed.length === groups.length) s.error = `Couldn’t load the user list: ${failed.join('; ')}. Your account needs to be able to see the members of these groups (see the setup notes).`;
+  else if (failed.length) s.listWarn = `Some groups couldn’t be read, so the list may be incomplete: ${failed.join('; ')}.`;
   if (EDIT_GROUP_ID) {
     try { s.editSet = new Set((await groupMembers(EDIT_GROUP_ID)).map(u => u.username.toLowerCase())); }
     catch (err) { console.warn('[Critical2TN] edit group members failed', err); s.editSet = new Set(); s.editErr = `Couldn’t read who has edit access: ${err.message}`; }
@@ -3083,8 +3152,16 @@ async function loadManageUsers() {
 }
 function initials(n) { return String(n).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?'; }
 function fmtLogin(ms) { return ms ? new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never'; }
+function setManageTab(t) {
+  manageState.tab = t;
+  document.querySelectorAll('.mg-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  const intro = document.getElementById('mg-intro-users'); if (intro) intro.hidden = t !== 'users';
+  renderManage();
+}
 function renderManage() {
   const body = document.getElementById('manage-body'); if (!body) return;
+  if (manageState.tab === 'layers') return renderLayerAdmin(body);
+  if (manageState.tab === 'airports') return renderAirportSetup(body);
   const s = manageState;
   const hasEdit = u => s.editSet.has(u.username.toLowerCase());
   const q = s.q.trim().toLowerCase();
@@ -3095,6 +3172,7 @@ function renderManage() {
   const banners = [
     !EDIT_GROUP_ID ? '<div class="mg-warn">The edit group isn’t configured yet (<code>EDIT_GROUP_ID</code> in the app). You can view users, but not grant edit access.</div>' : '',
     s.editErr ? `<div class="mg-warn">${escapeHtml(s.editErr)}</div>` : '',
+    s.listWarn ? `<div class="mg-warn">${escapeHtml(s.listWarn)}</div>` : '',
     s.error ? `<div class="mg-err">${escapeHtml(s.error)}</div>` : '',
   ].join('');
   const rows = list.map(u => {
@@ -3103,7 +3181,7 @@ function renderManage() {
     return `<div class="mg-row">
       <div class="mg-av" aria-hidden="true">${escapeHtml(initials(u.name))}</div>
       <div class="mg-who"><div class="mg-name">${escapeHtml(u.name)}${me ? ' <span class="mg-me">you</span>' : ''}</div>
-        <div class="mg-sub">${escapeHtml(u.username)} · last sign-in ${escapeHtml(fmtLogin(u.lastLogin))}</div></div>
+        <div class="mg-sub">${escapeHtml(u.username)} · last sign-in ${escapeHtml(fmtLogin(u.lastLogin))}${u.tags && u.tags.includes('Staging') && u.tags.length === 1 ? ' · <b class="mg-stg">MFA not confirmed yet</b>' : ''}</div></div>
       <div class="mg-act">${on ? '<span class="mg-badge">Can edit</span>' : ''}
         <button type="button" class="mg-btn ${on ? 'rm' : 'add'} ${conf ? 'conf' : ''}" data-u="${escapeHtml(u.username)}" ${busy || !EDIT_GROUP_ID ? 'disabled' : ''}>${busy ? '…' : conf ? 'Tap to confirm' : (on ? 'Remove edit' : 'Grant edit')}</button></div>
     </div>`;
@@ -3152,6 +3230,229 @@ function closeManage() {
   document.removeEventListener('keydown', _manageKey);
 }
 function _manageKey(e) { if (e.key === 'Escape') closeManage(); }
+
+// ════════════ MAP LAYER SETTINGS (managers) ════════════
+//  Symbol colour, symbol size and the zoom a layer becomes visible at, for the
+//  reference layers. Saved for everyone in one small JSON item on ArcGIS
+//  (config.js → mapSettingsItemId). Values are validated on read and write.
+// ── Symbols for reference-layer points: a coloured disc with a white glyph, drawn on
+//    the shared canvas (so thousands stay fast). 24×24 stroke paths.
+const REF_SYMBOLS = {
+  dot:      { label: 'Plain dot', path: '' },
+  flame:    { label: 'Flame (fire)', path: 'M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z' },
+  cross:    { label: 'Cross (medical / EMS)', path: 'M12 6v12M6 12h12' },
+  hospital: { label: 'H (hospital)', path: 'M7 5v14M17 5v14M7 12h10' },
+  shield:   { label: 'Shield (law enforcement)', path: 'M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z' },
+  star:     { label: 'Star', path: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7L12 3z' },
+  home:     { label: 'Building with roof (EOC)', path: 'M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6' },
+  building: { label: 'Building', path: 'M6 21V4h12v17M10 8h1M13 8h1M10 12h1M13 12h1M10 16h4v5' },
+  cap:      { label: 'Graduation cap (school)', path: 'M2 9l10-5 10 5-10 5-10-5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5' },
+  bolt:     { label: 'Lightning bolt (power)', path: 'M13 3L5 14h6l-1 7 8-11h-6l1-7z' },
+  antenna:  { label: 'Antenna (towers)', path: 'M12 12v9M9 21h6M12 12l-3 9M12 12l3 9M7.5 8.5a6 6 0 0 1 9 0M5 6a9.5 9.5 0 0 1 14 0' },
+  flask:    { label: 'Flask (chemicals)', path: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3' },
+  drop:     { label: 'Water drop', path: 'M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z' },
+  dam:      { label: 'Dam', path: 'M6 4h12l-2 16H8L6 4zM3 10c1 .8 2 .8 3 0M18 10c1 .8 2 .8 3 0' },
+  warning:  { label: 'Warning triangle', path: 'M12 4l9 16H3L12 4zM12 10v4M12 17v.5' },
+};
+const REF_SYMBOL_DEFAULTS = {
+  eoc: 'home', fire: 'flame', ems: 'cross', law: 'shield', hosp: 'hospital', tier2: 'flask', subs: 'bolt', tower: 'antenna', tacn: 'antenna',
+  dams: 'dam', schools: 'cap', statebldg: 'building', lsr_tor: 'warning', lsr_wind: 'warning', lsr_hail: 'warning',
+  gauge_act: 'drop', gauge_all: 'drop', fire_inc: 'flame', tdof: 'flame', outages: 'bolt',
+};
+REF_LAYERS.forEach(d => { if (d.type !== 'tiles' && d.type !== 'dynamic' && d.geom !== 'line' && d.geom !== 'poly') d.symbol = d.symbol || REF_SYMBOL_DEFAULTS[d.key] || 'dot'; });
+
+const _glyphImgs = {};
+function refGlyphSvg(name, px, stroke = '#fff') {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${px}" height="${px}" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${REF_SYMBOLS[name].path}"/></svg>`;
+}
+function refGlyph(name) {
+  if (!name || !REF_SYMBOLS[name] || !REF_SYMBOLS[name].path) return null;
+  if (!_glyphImgs[name]) {
+    const img = new Image();
+    img.onload = () => Object.values(refState).forEach(st => st.layer && st.layer.eachLayer && st.layer.eachLayer(l => l.redraw && l.redraw()));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(refGlyphSvg(name, 48));
+    _glyphImgs[name] = img;
+  }
+  return _glyphImgs[name];
+}
+function refBadgeHtml(d, px) {
+  const g = d.symbol && REF_SYMBOLS[d.symbol] && REF_SYMBOLS[d.symbol].path;
+  if (!g) return `<span class="ref-dot" style="background:${d.color};width:${Math.round(px * .6)}px;height:${Math.round(px * .6)}px"></span>`;
+  return `<span class="ref-badge" style="background:${d.color};width:${px}px;height:${px}px">${refGlyphSvg(d.symbol, Math.round(px * .68))}</span>`;
+}
+// A circle marker that paints its glyph on the canvas
+L.Canvas.include({
+  _updateRefSymbol(layer) {
+    if (layer._empty()) return;
+    const p = layer._point, ctx = this._ctx, r = Math.max(layer._radius, 1), o = layer.options;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2, false);
+    ctx.globalAlpha = o.fillOpacity; ctx.fillStyle = o.fillColor; ctx.fill();
+    ctx.globalAlpha = o.opacity == null ? 1 : o.opacity; ctx.lineWidth = o.weight; ctx.strokeStyle = o.color; ctx.stroke();
+    const img = r >= 5 ? refGlyph(o.symbol) : null;
+    if (img && img.complete && img.naturalWidth) { const s = r * 1.3; ctx.globalAlpha = 1; ctx.drawImage(img, p.x - s / 2, p.y - s / 2, s, s); }
+  },
+});
+const RefSymbolMarker = L.CircleMarker.extend({ _updatePath() { this._renderer._updateRefSymbol(this); } });
+
+const MAPSET_CACHE_KEY = 'c2tn_mapsettings_v1';
+const refDefaults = {};                                    // key -> { color, size, minZoom, symbol } as shipped in the app
+const isPointLayer = d => d.type !== 'tiles' && d.type !== 'dynamic' && d.geom !== 'line' && d.geom !== 'poly';
+function refDefaultSize(d) { return d.radius || (d.geom === 'line' ? 2.5 : d.geom === 'poly' ? 1.5 : (d.symbol && d.symbol !== 'dot' ? 9 : 6)); }
+function snapshotRefDefaults() {
+  REF_LAYERS.forEach(d => { if (!refDefaults[d.key]) refDefaults[d.key] = { color: d.color, size: refDefaultSize(d), minZoom: d.minZoom || 0, symbol: d.symbol || 'dot' }; });
+}
+function sanitizeOverride(o) {
+  const out = {}; if (!o || typeof o !== 'object') return out;
+  if (typeof o.symbol === 'string' && REF_SYMBOLS[o.symbol]) out.symbol = o.symbol;
+  if (typeof o.color === 'string' && /^#[0-9a-f]{6}$/i.test(o.color)) out.color = o.color.toLowerCase();
+  const sz = Number(o.size); if (Number.isFinite(sz) && sz >= 1 && sz <= 14) out.size = Math.round(sz * 2) / 2;
+  const mz = Number(o.minZoom); if (Number.isFinite(mz) && mz >= 0 && mz <= 19) out.minZoom = Math.round(mz);
+  return out;
+}
+function applyLayerOverrides(layers) {
+  snapshotRefDefaults();
+  Object.keys(layers || {}).forEach(k => {
+    const d = REF_BY_KEY[k]; if (!d) return;
+    const o = sanitizeOverride(layers[k]);
+    if (o.symbol && isPointLayer(d)) d.symbol = o.symbol;
+    if (o.color) d.color = o.color;
+    if (o.size) d.size = o.size;
+    if (o.minZoom != null) d.minZoom = o.minZoom;
+  });
+}
+async function loadMapSettings() {
+  snapshotRefDefaults();
+  const id = C2TN.mapSettingsItemId; let data = null;
+  try { data = JSON.parse(localStorage.getItem(MAPSET_CACHE_KEY) || 'null'); } catch (e) {}
+  if (id && TOKEN) {
+    try {
+      const res = await fetch(`${AGO_REST}/content/items/${id}/data?f=json&token=${encodeURIComponent(TOKEN.accessToken)}`);
+      const j = await res.json();
+      if (j && !j.error && j.layers) { data = j; try { localStorage.setItem(MAPSET_CACHE_KEY, JSON.stringify(j)); } catch (e) {} }
+      else if (j && j.error) console.warn('[Critical2TN] map settings not readable:', j.error.message);
+    } catch (err) { console.warn('[Critical2TN] map settings fetch failed (using cached):', err); }
+  }
+  if (data && data.layers) applyLayerOverrides(data.layers);
+}
+function refRestyle(key) {
+  const d = REF_BY_KEY[key], st = refState[key];
+  if (!d || !st || !st.layer || !st.layer.eachLayer) return;
+  const size = d.size || refDefaultSize(d);
+  st.layer.eachLayer(l => {
+    if (l.setRadius) { l.options.symbol = d.symbol; l.setRadius(size); l.setStyle({ fillColor: d.color }); l.redraw(); }
+    else l.setStyle({ color: d.color, fillColor: d.color, weight: size });
+  });
+}
+function currentOverrides() {          // only what differs from the shipped defaults
+  const out = {};
+  REF_LAYERS.forEach(d => {
+    const def = refDefaults[d.key], o = {};
+    if (isPointLayer(d) && (d.symbol || 'dot') !== def.symbol) o.symbol = d.symbol || 'dot';
+    if (d.color !== def.color) o.color = d.color;
+    if ((d.size || refDefaultSize(d)) !== def.size) o.size = d.size;
+    if ((d.minZoom || 0) !== def.minZoom) o.minZoom = d.minZoom || 0;
+    if (Object.keys(o).length) out[d.key] = o;
+  });
+  return out;
+}
+const layerAdmin = { saved: '{}', msg: '', msgKind: '', busy: false };
+function layerAdminDirty() { return JSON.stringify(currentOverrides()) !== layerAdmin.saved; }
+function renderLayerAdmin(body) {
+  snapshotRefDefaults();
+  if (layerAdmin.saved === '{}' && !layerAdmin.init) { layerAdmin.saved = JSON.stringify(currentOverrides()); layerAdmin.init = true; }
+  const id = C2TN.mapSettingsItemId, dirty = layerAdminDirty();
+  const open = new Set([...body.querySelectorAll('details[open]')].map(x => x.dataset.b));
+  const setup = id ? '' : `<div class="mg-warn">Changes can’t be shared yet: no settings item is configured (<code>mapSettingsItemId</code> in config.js).
+      <button type="button" class="ex-link" id="la-create">Create the settings item</button> — then paste its ID into config.js so everyone’s app uses it.</div>`;
+  body.innerHTML = `
+    ${setup}
+    <div class="mg-intro" style="padding:6px 4px 8px">Change a layer’s symbol colour and size, and the zoom level it appears at (higher = more zoomed in). Edits preview on your map now; <b>Save for everyone</b> applies them for all users.</div>
+    ${REF_BUNDLES.map(b => `
+      <details class="rl-bundle" data-b="${b.key}" ${open.has(b.key) ? 'open' : ''}>
+        <summary><span class="rl-bname">${escapeHtml(b.label)}<small>${escapeHtml(b.note)}</small></span></summary>
+        ${REF_LAYERS.filter(d => d.bundle === b.key).map(d => {
+          const def = refDefaults[d.key], img = d.type === 'tiles' || d.type === 'dynamic';
+          const changed = d.color !== def.color || (d.size || refDefaultSize(d)) !== def.size || (d.minZoom || 0) !== def.minZoom || (d.symbol || 'dot') !== def.symbol;
+          return `<div class="la-row" data-k="${d.key}">
+            <div class="la-name">${isPointLayer(d) ? refBadgeHtml(d, 22) : ''}<span>${escapeHtml(d.label)}${changed ? ' <span class="la-chg">edited</span>' : ''}${img ? ' <small>(image layer)</small>' : ''}</span></div>
+            <div class="la-ctl">
+              ${isPointLayer(d) ? `<label>Symbol<select data-f="symbol">${Object.keys(REF_SYMBOLS).map(s => `<option value="${s}" ${(d.symbol || 'dot') === s ? 'selected' : ''}>${REF_SYMBOLS[s].label}</option>`).join('')}</select></label>` : ''}
+              ${img ? '' : `<label>Colour<input type="color" data-f="color" value="${escapeHtml(d.color)}"></label>
+              <label>Size<input type="range" data-f="size" min="1" max="14" step="0.5" value="${d.size || refDefaultSize(d)}"><output>${d.size || refDefaultSize(d)}</output></label>`}
+              ${d.type === 'tiles' ? '' : `<label>Show from zoom<select data-f="minZoom">${Array.from({ length: 17 }, (_, z) => z + 3).map(z => `<option value="${z}" ${(d.minZoom || 0) === z ? 'selected' : ''}>${z}</option>`).join('')}</select></label>`}
+              <button type="button" class="la-reset" data-reset="${d.key}">Reset</button>
+            </div></div>`;
+        }).join('')}
+      </details>`).join('')}
+    <div class="la-bar">
+      <div class="la-msg ${layerAdmin.msgKind}" role="status">${escapeHtml(layerAdmin.msg || (dirty ? 'Unsaved changes.' : ''))}</div>
+      <button type="button" class="ex-sec2" id="la-discard" ${dirty ? '' : 'disabled'}>Discard</button>
+      <button type="button" class="ex-pri" id="la-save" ${dirty && id && !layerAdmin.busy ? '' : 'disabled'}>${layerAdmin.busy ? 'Saving…' : 'Save for everyone'}</button>
+    </div>`;
+  body.querySelectorAll('.la-row input, .la-row select').forEach(el => {
+    const k = el.closest('.la-row').dataset.k, f = el.dataset.f;
+    el.addEventListener('input', () => {
+      const d = REF_BY_KEY[k];
+      if (f === 'color') d.color = el.value;
+      if (f === 'symbol') { d.symbol = el.value; const nm = el.closest('.la-row').querySelector('.la-name'); const old = nm.querySelector('.ref-badge,.ref-dot'); if (old) old.outerHTML = refBadgeHtml(d, 22); }
+      if (f === 'size') { d.size = Number(el.value); const out = el.parentElement.querySelector('output'); if (out) out.textContent = el.value; }
+      if (f === 'minZoom') d.minZoom = Number(el.value);
+      layerAdmin.msg = ''; layerAdmin.msgKind = '';
+      refRestyle(k); if (f === 'minZoom') refreshRefLayers(false);
+      const dirtyNow = layerAdminDirty();
+      document.getElementById('la-save').disabled = !(dirtyNow && C2TN.mapSettingsItemId);
+      document.getElementById('la-discard').disabled = !dirtyNow;
+      document.querySelector('.la-msg').textContent = dirtyNow ? 'Unsaved changes.' : '';
+    });
+    if (f === 'minZoom') el.addEventListener('change', () => renderLayerAdmin(body));
+  });
+  body.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.reset, d = REF_BY_KEY[k], def = refDefaults[k];
+    d.color = def.color; d.symbol = def.symbol === 'dot' && !isPointLayer(d) ? d.symbol : def.symbol; d.size = undefined; d.minZoom = def.minZoom;
+    refRestyle(k); refreshRefLayers(false); renderLayerAdmin(body);
+  }));
+  document.getElementById('la-discard').addEventListener('click', discardLayerEdits);
+  document.getElementById('la-save').addEventListener('click', saveMapSettings);
+  const cr = document.getElementById('la-create'); if (cr) cr.addEventListener('click', createMapSettingsItem);
+}
+function discardLayerEdits() {
+  const saved = JSON.parse(layerAdmin.saved || '{}');
+  REF_LAYERS.forEach(d => {
+    const def = refDefaults[d.key], o = sanitizeOverride(saved[d.key]);
+    d.color = o.color || def.color; d.size = o.size; d.minZoom = o.minZoom != null ? o.minZoom : def.minZoom;
+    if (isPointLayer(d)) d.symbol = o.symbol || def.symbol;
+    refRestyle(d.key);
+  });
+  refreshRefLayers(false); layerAdmin.msg = ''; renderLayerAdmin(document.getElementById('manage-body'));
+}
+async function saveMapSettings() {
+  const id = C2TN.mapSettingsItemId; if (!id || layerAdmin.busy) return;
+  layerAdmin.busy = true; layerAdmin.msg = ''; renderLayerAdmin(document.getElementById('manage-body'));
+  try {
+    const item = await agoCall(`${AGO_REST}/content/items/${id}`, {}, 'GET');
+    const payload = { version: 1, updatedBy: TOKEN.username, updatedAt: new Date().toISOString(), layers: currentOverrides() };
+    await agoCall(`${AGO_REST}/content/users/${encodeURIComponent(item.owner)}/items/${id}/update`, { text: JSON.stringify(payload) });
+    layerAdmin.saved = JSON.stringify(payload.layers);
+    try { localStorage.setItem(MAPSET_CACHE_KEY, JSON.stringify(payload)); } catch (e) {}
+    layerAdmin.msg = 'Saved. Everyone gets this the next time they open the app.'; layerAdmin.msgKind = 'ok';
+  } catch (err) {
+    console.warn('[Critical2TN] saving map settings failed', err);
+    layerAdmin.msg = `Couldn’t save: ${err.message}. Your account must own the settings item or be in a group that can update it.`; layerAdmin.msgKind = 'bad';
+  }
+  layerAdmin.busy = false; renderLayerAdmin(document.getElementById('manage-body'));
+}
+async function createMapSettingsItem() {
+  try {
+    const u = TOKEN.username;
+    const j = await agoCall(`${AGO_REST}/content/users/${encodeURIComponent(u)}/addItem`, { title: 'Critical2TN Map Settings', type: 'JSON', tags: 'Critical2TN', snippet: 'Shared symbol and zoom settings for the Critical2TN mobile app', text: JSON.stringify({ version: 1, layers: {} }) });
+    if (!j.success) throw new Error('The item could not be created.');
+    C2TN.mapSettingsItemId = j.id;
+    let shared = 'not shared yet — share it with Everyone (public) in ArcGIS so every user can read it';
+    try { const sh = await agoCall(`${AGO_REST}/content/users/${encodeURIComponent(u)}/items/${j.id}/share`, { everyone: 'true' }); if ((sh.notSharedWith || []).length === 0) shared = 'shared with everyone (it only holds colours and zoom levels)'; } catch (e) { /* leave the message */ }
+    layerAdmin.msg = `Created item ${j.id} — ${shared}. Paste this ID into config.js as mapSettingsItemId.`; layerAdmin.msgKind = 'ok';
+  } catch (err) { layerAdmin.msg = `Couldn’t create the item: ${err.message}`; layerAdmin.msgKind = 'bad'; }
+  renderLayerAdmin(document.getElementById('manage-body'));
+}
 
 // ════════════ EDIT RECORD ════════════
 // [label, asset key, FIELDS key, input type]
@@ -3275,6 +3576,326 @@ function decoratePhotoEditing(a) {
 // one delegated listener for the Edit button
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.edit-btn[data-edit]'); if (b) openEditForm(b.dataset.edit); });
 
+// ════════════ LINKED DETAIL TABLES (e.g. airport survey fields) ════════════
+// Configured in config.js -> detailTables. Each table is joined to a Critical2TN record by its GlobalID
+// (table.linkField = that GlobalID). Read with `url`; edited only through `editUrl`, by the edit group.
+const linkedState = { a: null, t: null, guid: '', row: null, layerStatus: null, layerStatusField: '' };
+function linkedTablesFor(a) {
+  return (C2TN.detailTables || []).filter(t => {
+    if (!t || !t.url || !t.groups) return false;
+    const m = t.match || {};
+    try {
+      const txt = [a.name, a.assetType, a.component, a.subcomp].join(' ');
+      return (!m.hints || new RegExp(m.hints, 'i').test(txt)) && (!m.sector || new RegExp(m.sector, 'i').test(a.sector || ''));
+    } catch (e) { return false; }
+  });
+}
+const linkedEditUrl = t => (t.editUrl || (t.editable ? t.url : '')) || '';
+const canEditLinked = t => !!ROLES.editor && !!linkedEditUrl(t);
+const linkedFields = t => t.groups.flatMap(g => g.fields);
+const sqlQuote = s => String(s).replace(/'/g, "''");
+
+function linkedValueHtml(f, v) {
+  if (v === null || v === undefined || v === '') return '<div class="kv-val kv-empty">Not provided</div>';
+  if (f.type === 'date') { const d = new Date(Number(v)); return `<div class="kv-val">${isNaN(d) ? escapeHtml(String(v)) : d.toLocaleDateString(undefined, { timeZone: 'UTC' })}</div>`; }
+  if (f.type === 'tel') return `<a class="kv-val kv-link" href="tel:${escapeHtml(String(v).replace(/[^\d+]/g, ''))}">${escapeHtml(String(v))}</a>`;
+  return `<div class="kv-val">${escapeHtml(String(v))}</div>`;
+}
+const linkedHas = v => v !== null && v !== undefined && v !== '';
+
+async function loadLinkedDetails(a) {
+  const box = document.getElementById('linked-details');
+  const tables = linkedTablesFor(a);
+  if (!box || !tables.length) return;
+  const t = tables[0];
+  box.innerHTML = `<div class="sdiv"></div><div class="sec"><div class="sec-label">${escapeHtml(t.title || 'Details')}</div><div style="font-size:13px;color:var(--text3)">Loading…</div></div>`;
+  const stale = () => { const b = document.getElementById('linked-details'); return !b || b.dataset.aid !== String(a.id); };
+  try {
+    await ensureFreshToken(); await fetchLayerMeta();
+    const have = (LAYER_FIELDS || []).map(n => n.toLowerCase());
+    const gField = (LAYER_FIELDS || []).find(n => n.toLowerCase() === 'globalid');
+    if (!gField) throw new Error('The Critical2TN layer has no GlobalID field to link on.');
+    const sField = (LAYER_FIELDS || []).find(n => n.toLowerCase() === 'survey_status') || '';
+    const q = await agoCall(`${CONFIG.serviceUrl}/query`, { where: `OBJECTID=${Number(a.objectId)}`, outFields: [gField, sField].filter(Boolean).join(','), returnGeometry: 'false' }, 'GET');
+    const at = ((q.features || [])[0] || {}).attributes || {};
+    const guid = at[gField] || at[gField.toLowerCase()] || '';
+    if (!guid) throw new Error('Couldn’t read this record’s GlobalID.');
+    const r = await agoCall(`${t.url}/query`, { where: `${t.linkField}='${sqlQuote(guid)}'`, outFields: '*', returnGeometry: 'false', resultRecordCount: '1' }, 'GET');
+    if (stale()) return;
+    const row = ((r.features || [])[0] || {}).attributes || null;
+    Object.assign(linkedState, { a, t, guid, row, layerStatus: sField ? (at[sField] ?? at[sField.toLowerCase()] ?? null) : null, layerStatusField: sField });
+    renderLinkedDetails(box, a, t);
+  } catch (err) {
+    console.warn('[Critical2TN] linked details failed', err);
+    if (!stale()) box.innerHTML = `<div class="sdiv"></div><div class="sec"><div class="sec-label">${escapeHtml(t.title || 'Details')}</div><div class="kv-empty" style="font-size:13px">Couldn’t load: ${escapeHtml(err.message)}</div></div>`;
+  }
+}
+
+function renderLinkedDetails(box, a, t) {
+  const { row, layerStatus } = linkedState;
+  const status = (row && row.survey_status) || layerStatus || '';
+  const needs = status === 'Placeholder' || (!row && layerStatus === 'Placeholder');
+  const chip = needs ? '<span class="ld-chip warn">Needs details</span>' : status ? `<span class="ld-chip">${escapeHtml(status)}</span>` : '';
+  const editBtn = canEditLinked(t)
+    ? `<button type="button" class="edit-btn" data-ldedit="1">${row ? '✎ Edit' : '＋ Add'} ${escapeHtml((t.title || 'details').toLowerCase())}</button>` : '';
+  let body;
+  if (!row) body = `<div class="kv-empty" style="font-size:13px">No ${escapeHtml((t.title || 'details').toLowerCase())} recorded yet.</div>`;
+  else body = t.groups.map(g => {
+    const fs = g.fields.filter(f => f.field !== 'survey_status');
+    const any = fs.some(f => linkedHas(row[f.field]));
+    return `<details class="ld-group" ${any ? 'open' : ''}><summary>${escapeHtml(g.label)}${any ? '' : ' <span class="ld-none">none yet</span>'}</summary>
+      <div class="kv-grid">${fs.map(f => `<div class="kv-key">${escapeHtml(f.label)}</div>${linkedValueHtml(f, row[f.field])}`).join('')}</div></details>`;
+  }).join('');
+  box.innerHTML = `<div class="sdiv"></div><div class="sec"><div class="sec-label">${escapeHtml(t.title || 'Details')} ${chip}</div>${body}${editBtn}</div>`;
+}
+
+function openLinkedEditForm() {
+  const { a, t, row } = linkedState; if (!a || !t || !canEditLinked(t)) return;
+  const sec = sectorOf(a);
+  const val = f => { const v = row ? row[f.field] : null; if (!linkedHas(v)) return ''; if (f.type === 'date') { const d = new Date(Number(v)); return isNaN(d) ? '' : d.toISOString().slice(0, 10); } return String(v); };
+  const input = f => {
+    const v = val(f), nm = `name="${escapeHtml(f.field)}"`, ro = (f.field === t.idField && row) ? 'readonly' : '', req = f.required ? 'required' : '';
+    if (f.type === 'textarea') return `<textarea ${nm} rows="4" maxlength="${f.length || 2000}">${escapeHtml(v)}</textarea>`;
+    if (f.type === 'select' || f.type === 'yesno') {
+      const opts = f.type === 'yesno' ? ['Yes', 'No'] : (f.options || []).slice();
+      if (v && !opts.includes(v)) opts.push(v);
+      return `<select ${nm}><option value=""></option>${opts.map(o => `<option ${o === v ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}</select>`;
+    }
+    const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'tel' ? 'tel' : 'text';
+    return `<input ${nm} type="${type}" ${type === 'number' ? `step="${f.integer ? 1 : 'any'}" inputmode="decimal"` : ''} ${f.length ? `maxlength="${f.length}"` : ''} value="${escapeHtml(v)}" ${ro} ${req}>`;
+  };
+  document.getElementById('detail-body').innerHTML = `
+    <form id="ld-form" class="edit-form" autocomplete="off" novalidate>
+      <h2 class="sheet-name" id="detail-asset-name">${row ? 'Edit' : 'Add'} ${escapeHtml((t.title || 'details').toLowerCase())}</h2>
+      <div class="edit-sub">${iconHTML(sec.key, 20)} <span>${escapeHtml(a.name)}</span></div>
+      ${t.groups.map(g => `<fieldset class="ld-fs"><legend>${escapeHtml(g.label)}</legend>${g.fields.map(f => `
+        <label class="ef"><span>${escapeHtml(f.label)}${f.required ? ' *' : ''}</span>${input(f)}</label>`).join('')}</fieldset>`).join('')}
+      <div id="edit-msg" class="edit-msg" role="alert"></div>
+      <div class="edit-btns"><button type="submit" class="ex-pri" id="ld-save">Save</button><button type="button" class="ex-sec2" id="ld-cancel">Cancel</button></div>
+    </form>`;
+  document.getElementById('ld-cancel').onclick = () => reopenDetail(a.id);
+  document.getElementById('ld-form').onsubmit = ev => { ev.preventDefault(); saveLinked(); };
+}
+
+async function saveLinked() {
+  const { a, t, guid, row } = linkedState, form = document.getElementById('ld-form'), msg = document.getElementById('edit-msg'), btn = document.getElementById('ld-save');
+  const attrs = {}; let changed = 0;
+  for (const f of linkedFields(t)) {
+    const raw = form.elements[f.field].value.trim(); let v = raw === '' ? null : raw;
+    if (v !== null && f.type === 'number') { v = Number(raw); if (!isFinite(v)) { msg.textContent = `${f.label} must be a number.`; return; } if (f.integer) v = Math.round(v); }
+    if (v !== null && f.type === 'date') { v = Date.parse(raw + 'T00:00:00Z'); if (isNaN(v)) { msg.textContent = `${f.label} isn’t a valid date.`; return; } }
+    if (f.field === t.idField && v) v = String(v).toUpperCase();
+    if (f.required && v === null) { msg.textContent = `${f.label} is required.`; return; }
+    const old = row && linkedHas(row[f.field]) ? row[f.field] : null;
+    if (!row || v !== old) { if (v !== null || row) attrs[f.field] = v; if (v !== old) changed++; }
+  }
+  // status bookkeeping: first real data moves "Placeholder" -> "Partial"
+  const hasStatus = linkedFields(t).some(f => f.field === 'survey_status');
+  if (hasStatus && !('survey_status' in attrs)) {
+    const cur = (row && row.survey_status) || 'Placeholder';
+    if (cur === 'Placeholder' && Object.keys(attrs).some(k => k !== 'survey_status' && attrs[k] !== null)) attrs.survey_status = 'Partial';
+    else if (!row) attrs.survey_status = cur;
+  }
+  if (row && !changed && !('survey_status' in attrs)) { msg.textContent = 'Nothing changed.'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…'; msg.textContent = '';
+  try {
+    await ensureFreshToken();
+    const url = `${linkedEditUrl(t)}/applyEdits`;
+    let j;
+    if (row) { const oid = row.OBJECTID ?? row.objectid ?? row.ObjectID; j = await agoCall(url, { updates: JSON.stringify([{ attributes: { OBJECTID: oid, ...attrs } }]), rollbackOnFailure: 'true' }); }
+    else j = await agoCall(url, { adds: JSON.stringify([{ attributes: { [t.linkField]: guid, ...attrs } }]), rollbackOnFailure: 'true' });
+    const r = ((row ? j.updateResults : j.addResults) || [])[0];
+    if (!r || !r.success) throw new Error((r && r.error && r.error.description) || 'The table rejected the change.');
+    // keep the Critical2TN record's own "Needs details" flag in step (best effort)
+    const ns = attrs.survey_status;
+    if (ns && linkedState.layerStatusField && linkedState.layerStatus !== ns) {
+      try { await agoCall(`${CONFIG.serviceUrl}/applyEdits`, { updates: JSON.stringify([{ attributes: { [FIELDS.objectId]: a.objectId, [linkedState.layerStatusField]: ns } }]), rollbackOnFailure: 'true' }); }
+      catch (e) { console.warn('[Critical2TN] could not update survey_status on the main layer', e); }
+    }
+    reopenDetail(a.id);
+  } catch (err) {
+    console.warn('[Critical2TN] linked save failed', err);
+    msg.textContent = `Couldn’t save: ${err.message}`;
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-ldedit]')) openLinkedEditForm(); });
+
+// ════════════ AIRPORT SETUP (managers): create table, match, load ════════════
+const airSt = { tab: false, data: null, tableUrl: '', layerUrl: '', report: null, busy: false, log: [], created: null };
+const AIR_STOP = new Set('airport airpark airfield field municipal regional county international memorial executive the of and aviation heliport landing strip gliderport'.split(' '));
+const AIR_HINT = "UPPER(asset_name) LIKE '%AIRPORT%' OR UPPER(asset_name) LIKE '%AIRFIELD%' OR UPPER(asset_name) LIKE '%AIRPARK%' OR UPPER(asset_name) LIKE '%AIR PARK%' OR UPPER(asset_name) LIKE '%GLIDERPORT%' OR UPPER(asset_name) LIKE '%LANDING STRIP%' OR UPPER(asset_type) LIKE '%AIRPORT%' OR UPPER(component) LIKE '%AIRPORT%' OR UPPER(subcomponent) LIKE '%AIRPORT%'";
+const airCfg = () => (C2TN.detailTables || []).find(t => t && t.key === 'airport');
+const airLog = m => { airSt.log.push(m); renderAirportSetup(document.getElementById('manage-body')); };
+function loadAirportData() {
+  if (window.C2TN_AIRPORTS) return Promise.resolve(window.C2TN_AIRPORTS);
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'airports_data.js'; s.onload = () => res(window.C2TN_AIRPORTS); s.onerror = () => rej(new Error('airports_data.js not found next to index.html')); document.head.appendChild(s); });
+}
+const airToks = s => new Set((String(s || '').toLowerCase().match(/[a-z0-9]+/g) || []).filter(t => !AIR_STOP.has(t) && t.length > 1));
+const airNorm = s => (String(s || '').toLowerCase().match(/[a-z0-9]+/g) || []).join(' ');
+function airKm(a, b, c, d) { const p = Math.PI / 180, x = (d - b) * p * Math.cos((a + c) * p / 2), y = (c - a) * p; return 6371 * Math.hypot(x, y); }
+function airScore(ap, f) {
+  const at = f.attributes, g = f.geometry || {};
+  const lat = g.y ?? at.latitude, lon = g.x ?? at.longitude;
+  const d = (lat != null && lon != null) ? airKm(ap.lat, ap.lon, Number(lat), Number(lon)) : 999;
+  const n1 = airNorm(ap.name), n2 = airNorm(at.asset_name), t1 = airToks(ap.name), t2 = airToks(at.asset_name);
+  const same = n1 && n2 && (n1 === n2 || n1.includes(n2) || n2.includes(n1));
+  let shared = 0; t1.forEach(t => { if (t2.has(t)) shared++; });
+  const ov = (t1.size && t2.size) ? shared / Math.min(t1.size, t2.size) : 0;
+  const cty = at.county ? airNorm(at.county).startsWith(airNorm(ap.county)) : false;
+  if (d <= 3 && (same || ov >= 1)) return { s: 100 - d, c: 'exact', d };
+  if (d <= 1.5 || (ov >= 1 && d <= 15) || (same && d <= 15)) return { s: 70 - d, c: 'likely', d };
+  if (ov > 0 && cty && d <= 25) return { s: 40 - d, c: 'likely', d };
+  return null;
+}
+function airMatch(airports, feats) {
+  const pairs = [];
+  airports.forEach(ap => feats.forEach(f => { const r = airScore(ap, f); if (r) pairs.push({ ...r, id: ap.id, f }); }));
+  pairs.sort((x, y) => y.s - x.s);
+  const usedF = new Set(), res = {};
+  for (const p of pairs) { const oid = p.f.attributes.OBJECTID; if (res[p.id] || usedF.has(oid)) continue; res[p.id] = p; usedF.add(oid); }
+  return res;
+}
+async function airQueryAll(url, where, fields, geom) {
+  const out = []; let off = 0, guard = 60;
+  while (guard-- > 0) {
+    const j = await agoCall(`${url}/query`, { where, outFields: fields, returnGeometry: String(!!geom), outSR: '4326', resultOffset: String(off), resultRecordCount: '1000', orderByFields: 'OBJECTID' });
+    const fs = j.features || []; out.push(...fs); off += fs.length;
+    if (!fs.length || !j.exceededTransferLimit) break;
+  }
+  return out;
+}
+const airFieldMap = meta => Object.fromEntries((meta.fields || []).map(f => [f.name.toLowerCase(), f]));
+function airCoerce(v, f) {
+  if (v === '' || v == null) return null;
+  const t = (f && f.type) || '';
+  if (t === 'esriFieldTypeInteger' || t === 'esriFieldTypeSmallInteger') return Math.round(Number(v));
+  if (t === 'esriFieldTypeDouble' || t === 'esriFieldTypeSingle') return Number(v);
+  if (t === 'esriFieldTypeDate') return Date.parse(String(v).slice(0, 10) + 'T00:00:00Z');
+  const s = String(v); return f && f.length ? s.slice(0, f.length) : s;
+}
+
+async function airCreateTable() {
+  const spec = airCfg(); if (!spec) return airLog('config.js has no airport detailTables entry.');
+  airSt.busy = true; renderAirportSetup(document.getElementById('manage-body'));
+  try {
+    await ensureFreshToken();
+    const ESRI = { number: 'esriFieldTypeDouble', date: 'esriFieldTypeDate' };
+    const fields = [{ name: 'OBJECTID', type: 'esriFieldTypeOID', alias: 'OBJECTID', nullable: false, editable: false },
+      { name: spec.linkField, type: 'esriFieldTypeString', alias: 'Critical2TN GlobalID', length: 38, nullable: true, editable: true }];
+    spec.groups.forEach(g => g.fields.forEach(f => {
+      const t = f.integer ? 'esriFieldTypeInteger' : (ESRI[f.type] || 'esriFieldTypeString');
+      const d = { name: f.field, type: t, alias: f.label, nullable: true, editable: true };
+      if (t === 'esriFieldTypeString') d.length = f.length || 255; fields.push(d);
+    }));
+    const name = 'Critical2TN_Airport_Details', owner = TOKEN.username;
+    const svc = await agoCall(`${AGO_REST}/content/users/${encodeURIComponent(owner)}/createService`, { outputType: 'featureService', createParameters: JSON.stringify({
+      name, serviceDescription: 'Airport survey details linked to Critical2TN by GlobalID', hasStaticData: false, maxRecordCount: 2000, capabilities: 'Create,Delete,Query,Update,Editing' }) });
+    const admin = svc.serviceurl.replace('/rest/services/', '/rest/admin/services/');
+    await agoCall(`${admin}/addToDefinition`, { addToDefinition: JSON.stringify({ tables: [{ name, type: 'Table', displayField: spec.idField, objectIdField: 'OBJECTID', fields,
+      indexes: [{ name: 'idx_guid', fields: spec.linkField, isUnique: false, isAscending: true }, { name: 'idx_apid', fields: spec.idField, isUnique: true, isAscending: true }],
+      capabilities: 'Create,Delete,Query,Update,Editing' }] }) });
+    airSt.created = { itemId: svc.itemId, url: svc.serviceurl + '/0' }; airSt.tableUrl = airSt.created.url;
+    airLog('Created the table. It is private to you until you do the sharing steps below.');
+  } catch (err) { airLog('Couldn’t create the table: ' + err.message); }
+  airSt.busy = false; renderAirportSetup(document.getElementById('manage-body'));
+}
+
+async function airFindMatches() {
+  airSt.busy = true; airSt.report = null; renderAirportSetup(document.getElementById('manage-body'));
+  try {
+    await ensureFreshToken();
+    const airports = await loadAirportData(); airSt.data = airports;
+    const feats = await airQueryAll(airSt.layerUrl, `sector LIKE 'Transport%' OR ${AIR_HINT}`, 'OBJECTID,GlobalID,asset_name,county,latitude,longitude', true);
+    const res = airMatch(airports, feats);
+    airSt.report = airports.map(ap => {
+      const m = res[ap.id], at = m ? m.f.attributes : null;
+      const gid = at ? (Object.entries(at).find(([k]) => k.toLowerCase() === 'globalid') || [])[1] || '' : '';
+      return { ap, decision: m && gid ? 'match' : 'create', conf: m ? m.c : 'none', km: m ? m.d : null, oid: at ? at.OBJECTID : null, guid: gid, cname: at ? at.asset_name : '' };
+    });
+    airLog(`Checked ${feats.length} Critical2TN records. Review the list, then load.`);
+  } catch (err) { airLog('Couldn’t check for matches: ' + err.message); }
+  airSt.busy = false; renderAirportSetup(document.getElementById('manage-body'));
+}
+
+async function airApply() {
+  const rep = airSt.report; if (!rep) return;
+  airSt.busy = true; renderAirportSetup(document.getElementById('manage-body'));
+  try {
+    await ensureFreshToken();
+    const lMeta = await agoCall(airSt.layerUrl, {}, 'GET'), tMeta = await agoCall(airSt.tableUrl, {}, 'GET');
+    const lf = airFieldMap(lMeta), tf = airFieldMap(tMeta), spec = airCfg();
+    if (!tf[spec.linkField] || !tf[spec.idField]) throw new Error(`The table needs ${spec.linkField} and ${spec.idField} fields.`);
+    const gName = (lMeta.fields.find(f => f.type === 'esriFieldTypeGlobalID') || {}).name;
+    if (!gName) throw new Error('The Critical2TN layer has no GlobalID field.');
+    const existing = new Set((await airQueryAll(airSt.tableUrl, '1=1', spec.idField, false)).map(f => String(f.attributes[spec.idField] || f.attributes[spec.idField.toUpperCase()] || '').toUpperCase()));
+    const todo = rep.filter(r => (r.decision === 'match' || r.decision === 'create') && !existing.has(r.ap.id));
+    const creates = todo.filter(r => r.decision === 'create');
+    airLog(`${creates.length} placeholder records to create, ${todo.length} detail rows to add (${rep.length - todo.length} skipped or already loaded).`);
+    for (let i = 0; i < creates.length; i += 50) {
+      const chunk = creates.slice(i, i + 50);
+      const adds = chunk.map(r => { const ap = r.ap;
+        const raw = { asset_name: ap.name, sector: 'Transportation Systems', asset_type: 'Airport', component: 'Airports', address: ap.address, city: ap.city, state: 'TN', zip: ap.zip, county: ap.county, latitude: ap.lat, longitude: ap.lon, survey_status: 'Placeholder' };
+        const at = {}; Object.entries(raw).forEach(([k, v]) => { if (lf[k.toLowerCase()]) at[lf[k.toLowerCase()].name] = airCoerce(v, lf[k.toLowerCase()]); });
+        return { attributes: at, geometry: { x: ap.lon, y: ap.lat, spatialReference: { wkid: 4326 } } }; });
+      const j = await agoCall(`${airSt.layerUrl}/applyEdits`, { adds: JSON.stringify(adds), rollbackOnFailure: 'true' });
+      (j.addResults || []).forEach((x, k) => { if (!x.success) throw new Error(`Couldn’t add ${chunk[k].ap.id}: ${(x.error && x.error.description) || 'rejected'}`); chunk[k].oid = x.objectId; });
+      airLog(`Created ${Math.min(i + 50, creates.length)} of ${creates.length} placeholders…`);
+    }
+    if (creates.length) {
+      const got = await airQueryAll(airSt.layerUrl, `OBJECTID IN (${creates.map(r => Number(r.oid)).join(',')})`, `OBJECTID,${gName}`, false);
+      const m = {}; got.forEach(g => { m[g.attributes.OBJECTID] = g.attributes[gName]; });
+      creates.forEach(r => { r.guid = m[r.oid] || ''; });
+    }
+    const rows = [];
+    todo.forEach(r => {
+      if (!r.guid) return airLog(`Skipped ${r.ap.id}: no GlobalID to link on.`);
+      const at = { [spec.linkField]: r.guid, [spec.idField]: r.ap.id };
+      Object.entries(r.ap.f).forEach(([k, v]) => { if (tf[k.toLowerCase()]) at[tf[k.toLowerCase()].name] = airCoerce(v, tf[k.toLowerCase()]); });
+      if (tf.survey_status) at.survey_status = 'Placeholder';
+      rows.push({ attributes: at });
+    });
+    for (let i = 0; i < rows.length; i += 50) {
+      const j = await agoCall(`${airSt.tableUrl}/applyEdits`, { adds: JSON.stringify(rows.slice(i, i + 50)), rollbackOnFailure: 'true' });
+      const bad = (j.addResults || []).filter(x => !x.success); if (bad.length) throw new Error('Details rows rejected: ' + ((bad[0].error && bad[0].error.description) || 'unknown'));
+      airLog(`Added ${Math.min(i + 50, rows.length)} of ${rows.length} detail rows…`);
+    }
+    airLog(`Done. ${rows.length} airports are linked${creates.length ? `, ${creates.length} new placeholder records created` : ''}. Reload the app to see them on the map.`);
+    airSt.report = null;
+  } catch (err) { airLog('Stopped: ' + err.message + ' (safe to run again — airports already loaded are skipped).'); }
+  airSt.busy = false; renderAirportSetup(document.getElementById('manage-body'));
+}
+
+function renderAirportSetup(body) {
+  if (!body) return;
+  const s = airSt, rep = s.report;
+  const cnt = k => rep ? rep.filter(r => r.conf === k).length : 0;
+  const nLoad = rep ? rep.filter(r => r.decision !== 'skip').length : 0;
+  body.innerHTML = `<div class="as-wrap">
+    <p class="as-p">Links the 76 airport surveys to Critical2TN. Nothing is written until you press <b>Load</b>.</p>
+    <div class="as-step"><b>1 · Create the details table</b>
+      <button type="button" class="mg-btn" id="as-create" ${s.busy ? 'disabled' : ''}>Create table in ArcGIS Online</button>
+      ${s.created ? `<div class="as-note">Created. Next, in ArcGIS Online open that table’s item page and make two views: a <b>read-only</b> one shared like Critical2TN, and an <b>update-enabled</b> one shared only with the edit group. Put their URLs in config.js (<code>url</code>, <code>editUrl</code>).</div>` : ''}
+    </div>
+    <div class="as-step"><b>2 · Find matches</b>
+      <label class="ef"><span>Details table URL (update-enabled)</span><input id="as-table" type="url" placeholder="https://services1.arcgis.com/…/FeatureServer/0" value="${escapeHtml(s.tableUrl)}"></label>
+      <label class="ef"><span>Critical2TN layer URL (must allow Add)</span><input id="as-layer" type="url" value="${escapeHtml(s.layerUrl || CONFIG.serviceUrl)}"></label>
+      <button type="button" class="mg-btn" id="as-find" ${s.busy ? 'disabled' : ''}>Find matches</button>
+    </div>
+    ${rep ? `<div class="as-step"><b>3 · Review</b>
+      <div class="as-note">${cnt('exact')} exact · ${cnt('likely')} likely (check these) · ${cnt('none')} not found — will get a blank placeholder.</div>
+      <div class="as-list">${rep.map((r, i) => `<div class="as-row"><div class="as-main"><b>${escapeHtml(r.ap.id)}</b> ${escapeHtml(r.ap.name)}<div class="as-sub">${escapeHtml(r.ap.county)} County${r.cname ? ` · ${escapeHtml(r.conf)}: “${escapeHtml(r.cname)}” ${r.km != null ? r.km.toFixed(1) + ' km' : ''}` : ' · no existing record'}</div></div>
+        <select data-i="${i}" class="as-dec"><option value="match" ${r.decision === 'match' ? 'selected' : ''} ${r.guid ? '' : 'disabled'}>Link</option><option value="create" ${r.decision === 'create' ? 'selected' : ''}>New blank</option><option value="skip" ${r.decision === 'skip' ? 'selected' : ''}>Skip</option></select></div>`).join('')}</div>
+      <button type="button" class="mg-btn" id="as-apply" ${s.busy || !nLoad ? 'disabled' : ''}>Load ${nLoad} airports</button></div>` : ''}
+    <div class="as-log" role="status">${s.busy ? '<i>Working…</i><br>' : ''}${s.log.slice(-8).map(escapeHtml).join('<br>')}</div></div>`;
+  const q = id => body.querySelector(id);
+  if (q('#as-create')) q('#as-create').onclick = airCreateTable;
+  if (q('#as-table')) q('#as-table').oninput = e => { s.tableUrl = e.target.value.trim().replace(/\/+$/, ''); };
+  if (q('#as-layer')) q('#as-layer').oninput = e => { s.layerUrl = e.target.value.trim().replace(/\/+$/, ''); };
+  if (q('#as-find')) q('#as-find').onclick = () => { s.layerUrl = s.layerUrl || CONFIG.serviceUrl; if (!/^https:\/\/.+\/FeatureServer\/\d+$/.test(s.tableUrl)) return airLog('Enter the details table URL (ends in /FeatureServer/0) first.'); airFindMatches(); };
+  body.querySelectorAll('.as-dec').forEach(el => el.onchange = () => { rep[+el.dataset.i].decision = el.value; renderAirportSetup(body); });
+  if (q('#as-apply')) q('#as-apply').onclick = airApply;
+}
 async function startApp() {
   buildFilterGrid();
   bindListHandlers();
