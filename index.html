@@ -252,6 +252,9 @@
   .db { font-family: inherit; font-size: 12px; font-weight: 700; padding: 8px 12px; min-height: 36px; border-radius: 8px; border: 1.5px solid var(--tema-blue); background: #fff; color: var(--tema-blue); cursor: pointer; }
   .db.pri { background: var(--tema-blue); color: #fff; }
   .db.ghost { border-color: var(--border); color: var(--text2); }
+  .drad { display: flex; gap: 6px; flex: 1 1 100%; }
+  .drad input { width: 110px; font: 600 16px 'DM Sans', sans-serif; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px; min-height: 40px; }
+  .drad select { font: 600 16px 'DM Sans', sans-serif; padding: 7px 8px; border: 1.5px solid var(--border); border-radius: 8px; background: #fff; min-height: 40px; }
   #map.drawing, #map.drawing .leaflet-grab { cursor: crosshair; }
   #map.drawing .leaflet-marker-icon, #map.drawing .leaflet-interactive { pointer-events: none !important; }
   #export-sheet { position: fixed; inset: 0; z-index: 2000; pointer-events: none; }
@@ -283,6 +286,58 @@
   .ex-sec2 { flex: 1; background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
   .ex-btns button:disabled { opacity: .4; cursor: not-allowed; }
   .ex-note { font-size: 11px; color: var(--text3); margin: 10px 4px 2px; line-height: 1.4; }
+
+
+  /* ── Manage users + edit record ─────────────────────────────── */
+  body.noscroll { overflow: hidden; }
+  #manage-panel { position: fixed; inset: 0; z-index: 2500; background: var(--bg); overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
+  #manage-panel[hidden] { display: none; }
+  .mg-top { position: sticky; top: 0; z-index: 2; background: var(--tema-blue); color: #fff; padding: max(14px, env(safe-area-inset-top)) 16px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .mg-top h2 { margin: 0; font-size: 18px; letter-spacing: -0.3px; }
+  .mg-close { position: static; }
+  .mg-intro { padding: 12px 16px 4px; font-size: 13px; color: var(--text2); line-height: 1.45; }
+  #manage-body { padding: 8px 12px 24px; max-width: 720px; margin: 0 auto; }
+  .mg-warn, .mg-err { font-size: 12.5px; line-height: 1.45; border-radius: 10px; padding: 10px 12px; margin: 6px 4px; }
+  .mg-warn { background: #fff4de; border: 1px solid #f0d49a; color: #5c4200; }
+  .mg-err { background: #fde8e8; border: 1px solid #f1b5b5; color: #842029; }
+  .mg-warn code { font-size: 11px; }
+  .mg-tools { margin: 8px 4px; }
+  #manage-search { width: 100%; padding: 11px 12px; border: 2px solid var(--border); border-radius: 10px; font: 16px 'DM Sans', sans-serif; background: #fff; }
+  .mg-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .mg-chip { font: 700 12px 'DM Sans', sans-serif; padding: 7px 12px; min-height: 36px; border-radius: 18px; border: 1.5px solid var(--border); background: #fff; color: var(--text2); cursor: pointer; }
+  .mg-chip.on { background: var(--tema-blue); border-color: var(--tema-blue); color: #fff; }
+  .mg-chip b { font-family: 'DM Mono', monospace; margin-left: 3px; }
+  .mg-list { margin-top: 8px; }
+  .mg-row { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 0 4px 8px; }
+  .mg-av { width: 38px; height: 38px; border-radius: 50%; background: #dce6fb; color: var(--tema-blue); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .mg-who { flex: 1; min-width: 0; }
+  .mg-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mg-sub { font-size: 11.5px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mg-me { font-size: 10px; background: #eef3fb; border: 1px solid #c9d6ee; border-radius: 6px; padding: 1px 5px; color: var(--tema-blue); vertical-align: 1px; }
+  .mg-act { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+  .mg-badge { font-size: 10.5px; font-weight: 700; color: #0b5a2b; background: #dff3e6; border: 1px solid #a9dcb9; border-radius: 6px; padding: 1px 7px; }
+  .mg-btn { font: 700 12px 'DM Sans', sans-serif; padding: 8px 12px; min-height: 36px; border-radius: 8px; cursor: pointer; border: 1.5px solid var(--tema-blue); background: var(--tema-blue); color: #fff; }
+  .mg-btn.rm { background: #fff; color: #842029; border-color: #d99; }
+  .mg-btn.conf { background: var(--tema-red); border-color: var(--tema-red); color: #fff; }
+  .mg-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .mg-empty { text-align: center; color: var(--text3); font-size: 13px; padding: 30px 10px; }
+  .edit-btn { margin-top: 10px; font: 700 13px 'DM Sans', sans-serif; padding: 9px 14px; min-height: 40px; border-radius: 10px; border: 1.5px solid var(--tema-blue); background: #fff; color: var(--tema-blue); cursor: pointer; }
+  .edit-note { margin-top: 8px; font-size: 12px; color: var(--text3); }
+  .edit-form { padding: 14px 20px 20px; }
+  .edit-sub { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); margin: 2px 0 12px; }
+  .ef { display: block; margin-bottom: 10px; }
+  .ef span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 3px; }
+  .ef input { width: 100%; padding: 11px 12px; border: 2px solid var(--border); border-radius: 10px; font: 16px 'DM Sans', sans-serif; background: var(--surface2); }
+  .ef input:focus { outline: none; border-color: var(--tema-blue); background: #fff; }
+  .ef-hint { font-size: 11.5px; color: var(--text3); margin: 4px 0 10px; }
+  .edit-msg { color: #842029; font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+  .edit-btns { display: flex; gap: 8px; }
+  .edit-btns button { font-family: inherit; font-weight: 700; font-size: 14px; border-radius: 10px; padding: 13px; min-height: 48px; cursor: pointer; }
+  .attachment-tile { position: relative; }
+  .att-del { position: absolute; top: 6px; right: 6px; z-index: 2; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 15px; border: 0; background: rgba(0,0,0,.65); color: #fff; font: 700 12px 'DM Sans', sans-serif; cursor: pointer; }
+  .photo-add { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .photo-btn { display: inline-flex; align-items: center; font: 700 13px 'DM Sans', sans-serif; padding: 9px 14px; min-height: 40px; border-radius: 10px; border: 1.5px dashed var(--tema-blue); color: var(--tema-blue); cursor: pointer; }
+  .photo-msg { font-size: 12px; color: var(--text3); }
 
   /* ── Map ─────────────────────────────────────────────────── */
   #map-container { flex-shrink: 0; height: 36vh; position: relative; }
@@ -519,6 +574,9 @@
         <h1 class="app-title-text">Critical2TN</h1>
       </div>
       <div class="header-pills">
+        <button id="manage-pill" class="header-pill" type="button" hidden onclick="openManage()" aria-label="Manage users">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Manage
+        </button>
         <button class="header-pill" onclick="requestLocation()" aria-label="Use my location">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
           <span id="loc-label">Locate</span>
@@ -617,6 +675,18 @@
     <button class="sheet-close-btn" onclick="closeExportSheet()" aria-label="Close export">×</button>
     <div id="export-body"></div>
   </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MANAGE USERS (members of the Critical2TN User Management group only)
+     ════════════════════════════════════════════════════════════ -->
+<div id="manage-panel" role="dialog" aria-modal="true" aria-labelledby="manage-title" hidden>
+  <div class="mg-top">
+    <h2 id="manage-title">Manage users</h2>
+    <button type="button" class="sheet-close-btn mg-close" onclick="closeManage()" aria-label="Close user management">×</button>
+  </div>
+  <div class="mg-intro">Approved Critical2TN users. <b>Grant edit</b> lets someone update asset records, contact details and photos.</div>
+  <div id="manage-body"></div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════
@@ -1402,6 +1472,7 @@ async function fetchLayerMeta() {
   try {
     const data = await arcgisFetch(url);
     LAYER_HAS_ATTACHMENTS = data.hasAttachments === true;
+    LAYER_CAPS = data.capabilities ? String(data.capabilities) : null;
     console.info('[Critical2TN] layer hasAttachments =', LAYER_HAS_ATTACHMENTS);
   } catch (err) {
     LAYER_META_ERROR = err.message || String(err);
@@ -1795,7 +1866,7 @@ const BASEMAPS = {
     ],
   },
 };
-let currentBasemap = 'streets';
+let currentBasemap = 'hybrid';
 let basemapLayers  = [];   // tracks every tile layer the current basemap added
 
 function applyBasemap(key) {
@@ -2051,6 +2122,7 @@ async function openDetail(id) {
       <h2 class="sheet-name" id="detail-asset-name">${escapeHtml(a.name)}</h2>
       <div class="sheet-addr">${escapeHtml(a.address || '')}${a.address ? '<br>' : ''}${escapeHtml(a.city || '')}${a.city && a.state ? ', ' : ''}${escapeHtml(a.state || '')} ${escapeHtml(String(a.zip || ''))}${a.county ? ' — ' + escapeHtml(a.county) + ' County' : ''}</div>
       ${distLine}
+      ${editButtonHtml(a)}
     </div>
     ${detailsSec}
     ${contactSec}
@@ -2085,7 +2157,7 @@ async function openDetail(id) {
 
   // Lazy-load attachments — only fetched when the detail is opened, not on
   // the initial list query (saves bandwidth on big asset sets).
-  loadAttachmentsInto(a);
+  loadAttachmentsInto(a).then(() => decoratePhotoEditing(a));
 }
 
 async function loadAttachmentsInto(a) {
@@ -2277,6 +2349,10 @@ const REF_LAYERS = [
   { key:'inund5', bundle:'hazards', type:'dynamic', label:'NOAA 5-day forecast flood extent', color:'#6a1b9a', geom:'poly', opacity:0.6, minZoom:8, refreshMs:900000,
     mapServer:'https://maps.water.noaa.gov/server/rest/services/nwm/mrf_gfs_5day_max_inundation_extent/MapServer', sublayer:0 },
 ];
+// Facility layers stay hidden until you're zoomed in to roughly county level (zoom 9) so a
+// statewide view isn't buried in dots. Hazard / live-feed layers keep their own (lower) limits.
+const REF_FACILITY_MIN_ZOOM = 9;
+REF_LAYERS.forEach(d => { if (d.bundle !== 'hazards') d.minZoom = Math.max(d.minZoom || 0, REF_FACILITY_MIN_ZOOM); });
 const REF_BY_KEY = Object.fromEntries(REF_LAYERS.map(d => [d.key, d]));
 const REF_PREF_KEY = 'c2tn_layers_v1';
 const refState = {};            // key -> { on, layer, ctl, data, loaded, at, status, n, capped, unavailable, ov, pending }
@@ -2304,8 +2380,10 @@ async function loadUserScope() {
       type: statewide ? 'statewide' : (counties.length ? 'county' : 'unknown'),
       counties: statewide ? [] : counties,
       groups: titles,
+      groupIds: (me.groups || []).map(g => g.id),
     };
     console.info('[Critical2TN] access scope:', USER_SCOPE.type, USER_SCOPE.counties);
+    applyRoles();
   } catch (err) {
     console.warn('[Critical2TN] could not read group membership (layers still work, unfiltered):', err);
   }
@@ -2597,7 +2675,7 @@ const EXPORT_NOTICE = 'SENSITIVE - Critical infrastructure information. Handle a
 const T2_FIELDS = ['OBJECTID','FacilityId','State_Facility_ID','FacilityName','Company_Name','Filing_Year','Filing_Type','Street','City','County','State','Zip',
                    'Latitude','Longitude','ChemicalName','CASNumber','MaxDailyQty','AvgDailyQty','MaxAmountInLargestContainer','EHS','ContactInfo'];
 
-const drawState = { mode: 'off', shape: null, pts: [], layer: null, ring: null, ctl: null,
+const drawState = { mode: 'off', shape: null, pts: [], center: null, radiusM: 0, note: null, layer: null, ring: null, ctl: null,
                     core: [], coreOff: new Set(), t2: [], t2Status: 'idle', t2Off: false, areaSqMi: 0, busy: false };
 
 // ── geometry helpers
@@ -2627,6 +2705,27 @@ function ringAreaSqMi(ring) {
   return Math.abs(s / 2) * k * k / 2589988.11;
 }
 
+// ── circle radius: type it (miles or km) or tap the edge on the map
+const RADIUS_UNIT_KEY = 'c2tn_radius_unit';
+function radiusUnit() { try { return localStorage.getItem(RADIUS_UNIT_KEY) === 'km' ? 'km' : 'mi'; } catch (e) { return 'mi'; } }
+const radiusUnitM = u => (u === 'km' ? 1000 : 1609.344);
+function fmtRadius(m, u) { const v = m / radiusUnitM(u); return v >= 10 ? v.toFixed(1).replace(/\.0$/, '') : String(parseFloat(v.toFixed(2))); }
+function onRadiusInput() {
+  const v = parseFloat(document.getElementById('draw-radius').value), u = document.getElementById('draw-unit').value;
+  drawState.radiusM = v > 0 ? v * radiusUnitM(u) : 0;
+  drawRender();
+}
+function onRadiusUnit(sel) {
+  try { localStorage.setItem(RADIUS_UNIT_KEY, sel.value); } catch (e) {}
+  if (drawState.radiusM) document.getElementById('draw-radius').value = fmtRadius(drawState.radiusM, sel.value);   // same distance, new unit
+}
+function finishCircle() {
+  if (!drawState.center || !(drawState.radiusM >= 20)) return;
+  const u = radiusUnit();
+  drawState.note = `Circle, ${fmtRadius(drawState.radiusM, u)} ${u} radius`;
+  finishShape(ringFromCircle(drawState.center, drawState.radiusM));
+}
+
 // ── drawing UI
 function initDraw() {
   drawState.layer = L.layerGroup().addTo(map);
@@ -2641,6 +2740,8 @@ function drawRender() {
     return;
   }
   const pts = drawState.pts;
+  if (drawState.shape === 'circle' && drawState.center && drawState.radiusM >= 20)
+    L.polygon(ringFromCircle(drawState.center, drawState.radiusM).map(p => [p[1], p[0]]), style).addTo(g);
   if (drawState.shape === 'polygon') {
     if (pts.length >= 3) L.polygon(pts, style).addTo(g); else if (pts.length === 2) L.polyline(pts, style).addTo(g);
   }
@@ -2661,25 +2762,29 @@ function toggleDraw() {
 }
 function cancelDraw() {
   if (drawState.ctl) drawState.ctl.abort();
+  drawState.center = null; drawState.radiusM = 0; drawState.note = null;
   drawState.pts = []; drawState.ring = null; drawState.shape = null; drawState.t2 = []; drawState.core = [];
   drawState.layer.clearLayers();
   closeExportSheet(true);
   setDrawMode('off');
 }
-function startShape(shape) { drawState.pts = []; drawState.ring = null; drawRender(); setDrawMode('drawing', shape); }
-function undoPoint() { drawState.pts.pop(); drawRender(); renderDrawBar(); }
+function startShape(shape) { drawState.center = null; drawState.radiusM = 0; drawState.note = null; drawState.pts = []; drawState.ring = null; drawRender(); setDrawMode('drawing', shape); }
+function undoPoint() { drawState.pts.pop(); if (drawState.shape === 'circle') { drawState.center = null; drawState.radiusM = 0; } drawRender(); renderDrawBar(); }
 function onDrawClick(e) {
   if (drawState.mode !== 'drawing') return;
+  if (drawState.shape === 'circle') {
+    if (!drawState.center) { drawState.center = e.latlng; drawState.pts = [e.latlng]; drawRender(); renderDrawBar(); return; }
+    const r = drawState.center.distanceTo(e.latlng);
+    if (r < 20) return;
+    drawState.radiusM = r;
+    const inp = document.getElementById('draw-radius'); if (inp) inp.value = fmtRadius(r, document.getElementById('draw-unit').value);
+    drawRender(); return;
+  }
   drawState.pts.push(e.latlng);
   const pts = drawState.pts;
   if (drawState.shape === 'rectangle' && pts.length === 2) {
     const b = L.latLngBounds(pts[0], pts[1]);
     return finishShape([[b.getWest(), b.getSouth()], [b.getEast(), b.getSouth()], [b.getEast(), b.getNorth()], [b.getWest(), b.getNorth()]]);
-  }
-  if (drawState.shape === 'circle' && pts.length === 2) {
-    const r = pts[0].distanceTo(pts[1]);
-    if (r < 20) { drawState.pts.pop(); return; }
-    return finishShape(ringFromCircle(pts[0], r));
   }
   drawRender(); renderDrawBar();
 }
@@ -2705,7 +2810,14 @@ function renderDrawBar() {
   if (m === 'drawing') {
     const msg = drawState.shape === 'polygon' ? (n < 3 ? `Tap the map to add corners (${n}/3 min)` : `${n} corners — tap more, or Finish`)
               : drawState.shape === 'rectangle' ? (n ? 'Tap the opposite corner' : 'Tap one corner')
-              : (n ? 'Tap to set the edge of the circle' : 'Tap the center');
+              : 'Tap the center of the circle';
+    if (drawState.shape === 'circle' && drawState.center) {
+      const u = radiusUnit();
+      html = `<span class="dmsg">Type a radius, or tap the map to set the edge</span>
+        <span class="drad"><input id="draw-radius" type="number" inputmode="decimal" min="0" step="any" placeholder="Radius" aria-label="Radius" value="${drawState.radiusM ? fmtRadius(drawState.radiusM, u) : ''}" oninput="onRadiusInput()">
+        <select id="draw-unit" aria-label="Unit" onchange="onRadiusUnit(this)"><option value="mi" ${u === 'mi' ? 'selected' : ''}>miles</option><option value="km" ${u === 'km' ? 'selected' : ''}>km</option></select></span>
+        ${b('Undo', 'undoPoint()')}${b('Done', 'finishCircle()', 'pri')}${b('Cancel', 'cancelDraw()', 'ghost')}`;
+    } else
     html = `<span class="dmsg">${msg}</span>${n ? b('Undo', 'undoPoint()') : ''}${drawState.shape === 'polygon' && n >= 3 ? b('Finish', 'finishPolygon()', 'pri') : ''}${b('Cancel', 'cancelDraw()', 'ghost')}`;
   }
   if (m === 'done') html = `${b('Export…', 'openExportSheet()', 'pri')}${b('Redraw', "setDrawMode('choose')")}${b('Clear', 'cancelDraw()', 'ghost')}`;
@@ -2784,7 +2896,7 @@ function renderExportSheet() {
   }).join('');
   body.innerHTML = `
     <h2 id="export-title" class="rl-title">Export area</h2>
-    <div class="rl-sub">${drawState.areaSqMi < 0.1 ? '< 0.1' : drawState.areaSqMi.toFixed(drawState.areaSqMi < 10 ? 1 : 0)} sq mi · only data your account can already see${refCountyWhere(REF_BY_KEY.tier2) ? ' · Tier II limited to your county' : ''}</div>
+    <div class="rl-sub">${drawState.note ? escapeHtml(drawState.note) + ' · ' : ''}${drawState.areaSqMi < 0.1 ? '< 0.1' : drawState.areaSqMi.toFixed(drawState.areaSqMi < 10 ? 1 : 0)} sq mi · only data your account can already see${refCountyWhere(REF_BY_KEY.tier2) ? ' · Tier II limited to your county' : ''}</div>
     <div class="ex-card">
       <div class="ex-head"><span>Critical2TN assets</span><b>${drawState.core.length.toLocaleString()}</b></div>
       ${secRows || '<div class="ex-none">None in this area</div>'}
@@ -2885,6 +2997,283 @@ async function exportCsv(preferShare) {
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
+
+// ════════════════════════════════════════════════════════════════
+//  USER MANAGEMENT + RECORD EDITING
+//  --------------------------------------------------------------
+//   • Who is a manager?  Anyone who is a member of the Critical2TN User
+//     Management group (MANAGE_GROUP_ID). Checked at sign-in from the
+//     account's own group list — no extra lookup.
+//   • Managers get a "Manage" button: a list of approved users with a
+//     Grant / Remove edit switch. "Edit access" = membership of the edit
+//     group (EDIT_GROUP_ID), which is the group that has update rights on
+//     the Critical2TN layer. ArcGIS sharing is the real security boundary;
+//     this screen only changes group membership.
+//   • People in the edit group see an "Edit record" form and photo
+//     add / delete controls on each asset's detail sheet.
+//   • Needs: the manager's ArcGIS account must be an owner/manager of the
+//     edit group (to add/remove members) and able to see the member lists
+//     of the groups below. The app shows the exact error if not.
+// ════════════════════════════════════════════════════════════════
+const MANAGE_GROUP_ID = 'fb38085094804e58bc02e35d082ec4bf';     // Critical2TN User Management
+const EDIT_GROUP_ID   = '';                                      // TODO: ID of the group that can edit the Critical2TN layer
+// Approved users = members of these groups (everyone promoted out of Staging is in "Secure MFA").
+const MANAGE_LIST_GROUP_IDS = ['dafcbf87b71c48528d197b64785ac10b'];   // Critical2TN Secure MFA
+const AGO_REST = 'https://www.arcgis.com/sharing/rest';
+
+const ROLES = { manager: false, editor: false };
+let LAYER_CAPS = null;                                           // layer capabilities string, e.g. "Query,Update,Editing"
+function applyRoles() {
+  const ids = new Set(USER_SCOPE.groupIds || []);
+  ROLES.manager = ids.has(MANAGE_GROUP_ID);
+  ROLES.editor = !!EDIT_GROUP_ID && ids.has(EDIT_GROUP_ID);
+  const pill = document.getElementById('manage-pill'); if (pill) pill.hidden = !ROLES.manager;
+  console.info('[Critical2TN] roles:', JSON.stringify(ROLES));
+}
+const layerAllowsUpdate = () => LAYER_CAPS == null || /update|editing/i.test(LAYER_CAPS);
+const canEditAssets = () => ROLES.editor && layerAllowsUpdate();
+
+// ── ArcGIS REST helper (POST/GET, one silent token refresh on 498/499)
+async function agoCall(url, params, method = 'POST', formData) {
+  const run = async () => {
+    const p = { f: 'json', ...params, token: TOKEN.accessToken };
+    let res;
+    if (formData) { formData.set('f', 'json'); formData.set('token', TOKEN.accessToken); res = await fetch(url, { method: 'POST', body: formData }); }
+    else if (method === 'GET') res = await fetch(url + '?' + new URLSearchParams(p));
+    else res = await fetch(url, { method: 'POST', body: new URLSearchParams(p) });
+    return res.json();
+  };
+  let json = await run();
+  if (json.error && (json.error.code === 498 || json.error.code === 499) && TOKEN.refreshToken) {
+    try { saveToken(await refreshAccessToken()); json = await run(); } catch (e) { /* fall through */ }
+  }
+  if (json.error) throw Object.assign(new Error(json.error.message || 'ArcGIS error'), { code: json.error.code, details: json.error.details });
+  return json;
+}
+
+// ════════════ MANAGE USERS ════════════
+const manageState = { users: [], editSet: new Set(), filter: 'all', q: '', loading: false, error: '', editErr: '', confirm: null, busy: new Set(), at: 0 };
+
+async function groupMembers(groupId) {
+  const out = []; let start = 1, guard = 25;
+  while (start > 0 && guard-- > 0) {
+    const j = await agoCall(`${AGO_REST}/community/groups/${groupId}/userList`, { num: '100', start: String(start), sortField: 'fullname', sortOrder: 'asc' }, 'GET');
+    out.push(...(j.users || []));
+    start = j.nextStart && j.nextStart > 0 ? j.nextStart : -1;
+  }
+  return out;
+}
+async function loadManageUsers() {
+  const s = manageState; s.loading = true; s.error = ''; s.editErr = ''; renderManage();
+  try {
+    const lists = await Promise.all(MANAGE_LIST_GROUP_IDS.map(groupMembers));
+    const map = new Map();
+    lists.flat().forEach(u => { if (u && u.username && !map.has(u.username)) map.set(u.username, u); });
+    s.users = [...map.values()].map(u => ({ username: u.username, name: u.fullname || u.fullName || u.username, lastLogin: u.lastLogin > 0 ? u.lastLogin : 0, memberType: u.memberType || '' }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    console.warn('[Critical2TN] user list failed', err);
+    s.users = []; s.error = `Couldn’t load the user list: ${err.message}. Your account needs to be able to see the members of the Critical2TN groups.`;
+  }
+  if (EDIT_GROUP_ID) {
+    try { s.editSet = new Set((await groupMembers(EDIT_GROUP_ID)).map(u => u.username.toLowerCase())); }
+    catch (err) { console.warn('[Critical2TN] edit group members failed', err); s.editSet = new Set(); s.editErr = `Couldn’t read who has edit access: ${err.message}`; }
+  }
+  s.loading = false; s.at = Date.now(); renderManage();
+}
+function initials(n) { return String(n).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?'; }
+function fmtLogin(ms) { return ms ? new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never'; }
+function renderManage() {
+  const body = document.getElementById('manage-body'); if (!body) return;
+  const s = manageState;
+  const hasEdit = u => s.editSet.has(u.username.toLowerCase());
+  const q = s.q.trim().toLowerCase();
+  const list = s.users.filter(u => (!q || (u.name + ' ' + u.username).toLowerCase().includes(q)) &&
+    (s.filter === 'all' || (s.filter === 'edit' ? hasEdit(u) : !hasEdit(u))));
+  const nEdit = s.users.filter(hasEdit).length;
+  const chip = (k, label, n) => `<button type="button" class="mg-chip ${s.filter === k ? 'on' : ''}" data-filter="${k}">${label} <b>${n}</b></button>`;
+  const banners = [
+    !EDIT_GROUP_ID ? '<div class="mg-warn">The edit group isn’t configured yet (<code>EDIT_GROUP_ID</code> in the app). You can view users, but not grant edit access.</div>' : '',
+    s.editErr ? `<div class="mg-warn">${escapeHtml(s.editErr)}</div>` : '',
+    s.error ? `<div class="mg-err">${escapeHtml(s.error)}</div>` : '',
+  ].join('');
+  const rows = list.map(u => {
+    const on = hasEdit(u), busy = s.busy.has(u.username), conf = s.confirm === u.username;
+    const me = TOKEN && TOKEN.username && TOKEN.username.toLowerCase() === u.username.toLowerCase();
+    return `<div class="mg-row">
+      <div class="mg-av" aria-hidden="true">${escapeHtml(initials(u.name))}</div>
+      <div class="mg-who"><div class="mg-name">${escapeHtml(u.name)}${me ? ' <span class="mg-me">you</span>' : ''}</div>
+        <div class="mg-sub">${escapeHtml(u.username)} · last sign-in ${escapeHtml(fmtLogin(u.lastLogin))}</div></div>
+      <div class="mg-act">${on ? '<span class="mg-badge">Can edit</span>' : ''}
+        <button type="button" class="mg-btn ${on ? 'rm' : 'add'} ${conf ? 'conf' : ''}" data-u="${escapeHtml(u.username)}" ${busy || !EDIT_GROUP_ID ? 'disabled' : ''}>${busy ? '…' : conf ? 'Tap to confirm' : (on ? 'Remove edit' : 'Grant edit')}</button></div>
+    </div>`;
+  }).join('');
+  body.innerHTML = `
+    ${banners}
+    <div class="mg-tools">
+      <input id="manage-search" type="search" placeholder="Search name or username" value="${escapeHtml(s.q)}" aria-label="Search users" autocomplete="off">
+      <div class="mg-chips">${chip('all', 'All', s.users.length)}${chip('edit', 'Can edit', nEdit)}${chip('none', 'No edit', s.users.length - nEdit)}
+        <button type="button" class="mg-chip" id="manage-refresh">↻ Refresh</button></div>
+    </div>
+    <div class="mg-list" id="manage-list">${s.loading ? '<div class="mg-empty">Loading users…</div>' : (rows || `<div class="mg-empty">${s.users.length ? 'No users match.' : 'No approved users to show.'}</div>`)}</div>`;
+  const inp = document.getElementById('manage-search');
+  inp.addEventListener('input', () => { s.q = inp.value; const pos = inp.selectionStart; renderManage(); const n = document.getElementById('manage-search'); n.focus(); n.setSelectionRange(pos, pos); });
+  body.querySelectorAll('.mg-chip[data-filter]').forEach(b => b.addEventListener('click', () => { s.filter = b.dataset.filter; renderManage(); }));
+  document.getElementById('manage-refresh').addEventListener('click', loadManageUsers);
+  body.querySelectorAll('.mg-btn[data-u]').forEach(b => b.addEventListener('click', () => manageToggle(b.dataset.u)));
+}
+async function manageToggle(username) {
+  const s = manageState;
+  if (s.confirm !== username) { s.confirm = username; renderManage(); setTimeout(() => { if (s.confirm === username) { s.confirm = null; renderManage(); } }, 4000); return; }
+  s.confirm = null; s.busy.add(username); renderManage();
+  const has = s.editSet.has(username.toLowerCase());
+  try {
+    const j = await agoCall(`${AGO_REST}/community/groups/${EDIT_GROUP_ID}/${has ? 'removeUsers' : 'addUsers'}`, { users: username });
+    const failed = (j.notAdded || j.notRemoved || []);
+    if (failed.length) throw new Error(has ? 'Could not be removed.' : 'Could not be added. Check you are a manager of the edit group and the user can join it.');
+    has ? s.editSet.delete(username.toLowerCase()) : s.editSet.add(username.toLowerCase());
+    if (TOKEN.username && TOKEN.username.toLowerCase() === username.toLowerCase()) { ROLES.editor = !has; }
+    s.editErr = '';
+  } catch (err) {
+    console.warn('[Critical2TN] edit access change failed', err);
+    s.editErr = `${has ? 'Remove' : 'Grant'} failed for ${username}: ${err.message}`;
+  }
+  s.busy.delete(username); renderManage();
+}
+function openManage() {
+  const el = document.getElementById('manage-panel'); if (!el) return;
+  el.removeAttribute('hidden'); document.body.classList.add('noscroll');
+  document.addEventListener('keydown', _manageKey);
+  if (!manageState.at || Date.now() - manageState.at > 60000) loadManageUsers(); else renderManage();
+}
+function closeManage() {
+  const el = document.getElementById('manage-panel'); if (!el) return;
+  el.setAttribute('hidden', ''); document.body.classList.remove('noscroll');
+  document.removeEventListener('keydown', _manageKey);
+}
+function _manageKey(e) { if (e.key === 'Escape') closeManage(); }
+
+// ════════════ EDIT RECORD ════════════
+// [label, asset key, FIELDS key, input type]
+const EDIT_FIELDS = [
+  ['Name', 'name', 'name', 'text'], ['Address', 'address', 'address', 'text'], ['City', 'city', 'city', 'text'], ['ZIP', 'zip', 'zip', 'text'],
+  ['Asset type', 'assetType', 'assetType', 'text'], ['CISA sector', 'sector', 'sector', 'sector'],
+  ['Component', 'component', 'component', 'text'], ['Subcomponent', 'subcomp', 'subcomponent', 'text'],
+  ['Contact name', 'contactName', 'contactName', 'text'], ['Contact agency', 'contactAgency', 'contactAgency', 'text'],
+  ['Contact phone', 'contactPhone', 'contactPhone', 'tel'], ['Contact email', 'contactEmail', 'contactEmail', 'email'],
+];
+function editButtonHtml(a) {
+  if (!ROLES.editor) return '';
+  if (!layerAllowsUpdate()) return '<div class="edit-note">Editing is switched off on this layer.</div>';
+  return `<button type="button" class="edit-btn" data-edit="${escapeHtml(String(a.id))}">✎ Edit record</button>`;
+}
+function reopenDetail(id) {
+  const sheet = document.getElementById('detail-sheet');
+  if (sheet && sheet._keyHandler) document.removeEventListener('keydown', sheet._keyHandler);
+  openDetail(id);
+}
+function openEditForm(id) {
+  const a = getAsset(id); if (!a || !canEditAssets()) return;
+  const sec = sectorOf(a);
+  document.getElementById('detail-body').innerHTML = `
+    <form id="edit-form" class="edit-form" autocomplete="off" novalidate>
+      <h2 class="sheet-name" id="detail-asset-name">Edit record</h2>
+      <div class="edit-sub">${iconHTML(sec.key, 20)} <span>${escapeHtml(a.name)}</span></div>
+      <datalist id="sector-list">${Object.values(SECTORS).map(s => `<option value="${escapeHtml(s.label)}">`).join('')}</datalist>
+      ${EDIT_FIELDS.map(([label, key, , type]) => `
+        <label class="ef"><span>${label}${key === 'name' ? ' *' : ''}</span>
+          <input name="${key}" type="${type === 'sector' ? 'text' : type}" ${type === 'sector' ? 'list="sector-list"' : ''} value="${escapeHtml(a[key] || '')}" ${key === 'name' ? 'required' : ''}></label>`).join('')}
+      <div class="ef-hint">Location can’t be changed here. Changes save straight to the Critical2TN layer.</div>
+      <div id="edit-msg" class="edit-msg" role="alert"></div>
+      <div class="edit-btns"><button type="submit" class="ex-pri" id="edit-save">Save changes</button><button type="button" class="ex-sec2" id="edit-cancel">Cancel</button></div>
+    </form>`;
+  document.getElementById('edit-cancel').onclick = () => reopenDetail(id);
+  document.getElementById('edit-form').onsubmit = ev => { ev.preventDefault(); saveEdit(id); };
+}
+async function saveEdit(id) {
+  const a = getAsset(id), form = document.getElementById('edit-form'), msg = document.getElementById('edit-msg'), btn = document.getElementById('edit-save');
+  const attrs = { [FIELDS.objectId]: a.objectId }, changes = {};
+  for (const [, key, fkey] of EDIT_FIELDS) {
+    const v = form.elements[key].value.trim();
+    if (v !== String(a[key] || '')) { attrs[FIELDS[fkey]] = v === '' ? null : v; changes[key] = v; }
+  }
+  if (!changes.hasOwnProperty('name') && !form.elements.name.value.trim()) { msg.textContent = 'Name is required.'; return; }
+  if (form.elements.name.value.trim() === '') { msg.textContent = 'Name is required.'; return; }
+  if (changes.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(changes.contactEmail)) { msg.textContent = 'That email address doesn’t look right.'; return; }
+  if (Object.keys(changes).length === 0) { msg.textContent = 'Nothing changed.'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…'; msg.textContent = '';
+  try {
+    await ensureFreshToken();
+    const j = await agoCall(`${CONFIG.serviceUrl}/applyEdits`, { updates: JSON.stringify([{ attributes: attrs }]), rollbackOnFailure: 'true' });
+    const r = (j.updateResults || [])[0];
+    if (!r || !r.success) throw new Error((r && r.error && r.error.description) || 'The layer rejected the change.');
+    Object.assign(a, changes);
+    a.sectorKey = normaliseSector(a.sector, a.lifeline);
+    cacheData(assets); refreshMarkers(); renderList();
+    reopenDetail(id);
+  } catch (err) {
+    console.warn('[Critical2TN] edit failed', err);
+    msg.textContent = `Couldn’t save: ${err.message}`;
+    btn.disabled = false; btn.textContent = 'Save changes';
+  }
+}
+
+// ── photos (editors): add from camera/library, delete
+function shrinkImage(file, maxDim = 1800, quality = 0.85) {
+  return new Promise(resolve => {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 400 * 1024) return resolve(file);
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, maxDim / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { URL.revokeObjectURL(url); resolve(b ? new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file); }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+function decoratePhotoEditing(a) {
+  if (!canEditAssets()) return;
+  const sec = document.getElementById('attachments-sec'), box = document.getElementById('attachments-body');
+  if (!sec || !box) return;
+  const old = sec.querySelector('.photo-add'); if (old) old.remove();      // rebuilt after each upload/delete
+  box.querySelectorAll('.attachment-tile').forEach(tile => {
+    const m = /attachments\/(\d+)/.exec(tile.getAttribute('data-url') || ''); if (!m) return;
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'att-del'; x.textContent = '✕'; x.setAttribute('aria-label', 'Delete this attachment');
+    x.addEventListener('click', async ev => {
+      ev.stopPropagation();
+      if (x.dataset.arm !== '1') { x.dataset.arm = '1'; x.textContent = 'Delete?'; setTimeout(() => { x.dataset.arm = ''; x.textContent = '✕'; }, 3000); return; }
+      x.textContent = '…';
+      try {
+        const j = await agoCall(`${CONFIG.serviceUrl}/${a.objectId}/deleteAttachments`, { attachmentIds: m[1] });
+        if (!((j.deleteAttachmentResults || [])[0] || {}).success) throw new Error('Not deleted');
+        await loadAttachmentsInto(a); decoratePhotoEditing(a);
+      } catch (err) { x.textContent = '✕'; alert('Couldn’t delete: ' + err.message); }
+    });
+    tile.appendChild(x);
+  });
+  const add = document.createElement('div');
+  add.className = 'photo-add';
+  add.innerHTML = `<label class="photo-btn">＋ Add photo<input type="file" accept="image/*" capture="environment" hidden></label><span class="photo-msg" role="status"></span>`;
+  sec.appendChild(add);
+  const input = add.querySelector('input'), pm = add.querySelector('.photo-msg');
+  input.addEventListener('change', async () => {
+    const f = input.files && input.files[0]; if (!f) return;
+    pm.textContent = 'Uploading…';
+    try {
+      await ensureFreshToken();
+      const small = await shrinkImage(f), fd = new FormData();
+      fd.append('attachment', small, small.name);
+      const j = await agoCall(`${CONFIG.serviceUrl}/${a.objectId}/addAttachment`, {}, 'POST', fd);
+      if (!(j.addAttachmentResult && j.addAttachmentResult.success)) throw new Error('The layer rejected the photo.');
+      await loadAttachmentsInto(a); decoratePhotoEditing(a);
+    } catch (err) { pm.textContent = 'Couldn’t add photo: ' + err.message; }
+  });
+}
+// one delegated listener for the Edit button
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.edit-btn[data-edit]'); if (b) openEditForm(b.dataset.edit); });
 
 async function startApp() {
   buildFilterGrid();
