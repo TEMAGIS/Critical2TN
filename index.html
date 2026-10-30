@@ -3481,7 +3481,15 @@ async function saveMapSettings() {
 async function createMapSettingsItem() {
   try {
     const u = TOKEN.username;
-    const j = await agoCall(`${AGO_REST}/content/users/${encodeURIComponent(u)}/addItem`, { title: 'Critical2TN Map Settings', type: 'JSON', tags: 'Critical2TN', snippet: 'Shared symbol and zoom settings for the Critical2TN mobile app', text: JSON.stringify({ version: 1, layers: {} }) });
+    // ArcGIS has no plain "JSON" item type, so store the settings as the text of a small application item.
+    let j = null, lastErr = null;
+    for (const type of ['Web Mapping Application', 'Application', 'Code Sample']) {
+      try {
+        j = await agoCall(`${AGO_REST}/content/users/${encodeURIComponent(u)}/addItem`, { title: 'Critical2TN Map Settings', type, typeKeywords: 'JSON,Critical2TN,Settings', url: CONFIG.redirectUri, tags: 'Critical2TN', snippet: 'Shared symbol and zoom settings for the Critical2TN mobile app', text: JSON.stringify({ version: 1, layers: {} }) });
+        if (j && j.success) break;
+      } catch (e) { lastErr = e; j = null; }
+    }
+    if (!j) throw lastErr || new Error('The item could not be created.');
     if (!j.success) throw new Error('The item could not be created.');
     C2TN.mapSettingsItemId = j.id;
     let shared = 'not shared yet — share it with Everyone (public) in ArcGIS so every user can read it';
@@ -3849,6 +3857,7 @@ async function airCreateTable() {
       indexes: [{ name: 'idx_guid', fields: spec.linkField, isUnique: false, isAscending: true }, { name: 'idx_apid', fields: spec.idField, isUnique: true, isAscending: true }],
       capabilities: 'Create,Delete,Query,Update,Editing' }] }) });
     airSt.created = { itemId: svc.itemId, url: svc.serviceurl + '/0' }; airSt.tableUrl = airSt.created.url;
+    try { localStorage.setItem(AIR_TABLE_KEY, airSt.tableUrl); } catch (e) {}
     airLog('Created the table. It is private to you until you do the sharing steps below.');
   } catch (err) { airLog('Couldn’t create the table: ' + err.message); }
   airSt.busy = false; renderAirportSetup(document.getElementById('manage-body'));
@@ -3927,9 +3936,15 @@ async function airApply() {
   airSt.busy = false; renderAirportSetup(document.getElementById('manage-body'));
 }
 
+const AIR_TABLE_KEY = 'c2tn_air_table';
 function renderAirportSetup(body) {
   if (!body) return;
   const s = airSt, rep = s.report;
+  if (!s.tableUrl) {                                   // remember the table: config.js first, then this browser's last entry
+    const t = airCfg() || {}; let saved = '';
+    try { saved = localStorage.getItem(AIR_TABLE_KEY) || ''; } catch (e) {}
+    s.tableUrl = (t.editUrl || t.url || saved || '').replace(/\/+$/, '');
+  }
   const cnt = k => rep ? rep.filter(r => r.conf === k).length : 0;
   const nLoad = rep ? rep.filter(r => r.decision !== 'skip').length : 0;
   body.innerHTML = `<div class="as-wrap">
@@ -3951,7 +3966,7 @@ function renderAirportSetup(body) {
     <div class="as-log" role="status">${s.busy ? '<i>Working…</i><br>' : ''}${s.log.slice(-8).map(escapeHtml).join('<br>')}</div></div>`;
   const q = id => body.querySelector(id);
   if (q('#as-create')) q('#as-create').onclick = airCreateTable;
-  if (q('#as-table')) q('#as-table').oninput = e => { s.tableUrl = e.target.value.trim().replace(/\/+$/, ''); };
+  if (q('#as-table')) q('#as-table').oninput = e => { s.tableUrl = e.target.value.trim().replace(/\/+$/, ''); try { localStorage.setItem(AIR_TABLE_KEY, s.tableUrl); } catch (err) {} };
   if (q('#as-layer')) q('#as-layer').oninput = e => { s.layerUrl = e.target.value.trim().replace(/\/+$/, ''); };
   if (q('#as-find')) q('#as-find').onclick = () => { s.layerUrl = s.layerUrl || CONFIG.serviceUrl; if (!/^https:\/\/.+\/FeatureServer\/\d+$/.test(s.tableUrl)) return airLog('Enter the details table URL (ends in /FeatureServer/0) first.'); airFindMatches(); };
   body.querySelectorAll('.as-dec').forEach(el => el.onchange = () => { rep[+el.dataset.i].decision = el.value; renderAirportSetup(body); });
