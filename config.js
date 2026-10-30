@@ -42,8 +42,8 @@ window.C2TN_CONFIG = {
     {
       key: 'airport',
       title: 'Airport details',
-      url: '',
-      editUrl: '',
+      url: 'https://services1.arcgis.com/kILp9lqGUeOhnDbI/arcgis/rest/services/Critical2TN_Airport_Details/FeatureServer/0',
+      editUrl: 'https://services1.arcgis.com/kILp9lqGUeOhnDbI/arcgis/rest/services/Critical2TN_Airport_Details/FeatureServer/0',
       linkField: 'critical2tn_guid',
       idField: 'airport_id',
       match: { sector: 'transport', hints: 'airport|airfield|airpark|gliderport|landing strip' },
