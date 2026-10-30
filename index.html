@@ -1363,6 +1363,7 @@ function featureToAsset(feature) {
     component:   p[FIELDS.component]    || '',
     subcomp:     p[FIELDS.subcomponent] || '',
     sector:      p[FIELDS.sector]       || '',
+    subsector:   FIELDS.subsector ? (p[FIELDS.subsector] || '') : '',
     contactName:   p[FIELDS.contactName]   || '',
     contactAgency: p[FIELDS.contactAgency] || '',
     contactPhone:  p[FIELDS.contactPhone]  || '',
@@ -1411,6 +1412,7 @@ async function fetchAssets() {
     return;
   }
   setLoadingState(true);
+  try { await fetchLayerMeta(); } catch (e) { /* optional: only needed to spot the subsector field */ }
   const outFields = Object.values(FIELDS).join(',');
   // AGOL hosted feature services cap a single query at maxRecordCount
   // (default 1,000 or 2,000 depending on org). To pull every record we
@@ -1522,6 +1524,9 @@ async function fetchLayerMeta() {
     LAYER_HAS_ATTACHMENTS = data.hasAttachments === true;
     LAYER_CAPS = data.capabilities ? String(data.capabilities) : null;
     LAYER_FIELDS = (data.fields || []).map(f => f.name);
+    // CISA subsector: use whichever field on the layer is named like it (cisa_subsector, CISAsubsector…)
+    const subF = (data.fields || []).find(f => /sub.?sector/i.test(f.name));
+    if (subF) { FIELDS.subsector = subF.name; if (typeof EDIT_FIELDS !== 'undefined' && !EDIT_FIELDS.some(x => x[1] === 'subsector')) EDIT_FIELDS.splice(6, 0, ['CISA subsector', 'subsector', 'subsector', 'text']); }
     console.info('[Critical2TN] layer hasAttachments =', LAYER_HAS_ATTACHMENTS);
   } catch (err) {
     LAYER_META_ERROR = err.message || String(err);
@@ -1793,7 +1798,6 @@ function renderCard(a) {
   const cityLine = [a.address, [a.city, a.state].filter(Boolean).join(', ') + (a.zip ? ` ${a.zip}` : ''), a.county ? `(${a.county} Co.)` : ''].filter(Boolean).join(' · ');
   const badges = [
     dist,
-    a.lifeline ? `<span class="meta-badge lifeline" title="FEMA Community Lifeline">${escapeHtml(LIFELINES[a.lifeline].label)}</span>` : '',
   ].filter(Boolean).join('');
   const sidAttr = String(a.id).replace(/"/g, '&quot;');
   return `<article class="asset-card ${String(selectedId) === String(a.id) ? 'selected' : ''}" id="card-${a.id}"
@@ -1809,7 +1813,7 @@ function renderCard(a) {
               <div class="card-name">${escapeHtml(a.name)}</div>
             </div>
             <div class="card-type-label" style="color:${ink}">${escapeHtml(label)}</div>
-            ${a.assetType ? `<div class="card-asset-type">${escapeHtml(a.assetType)}</div>` : ''}
+            ${a.subsector ? `<div class="card-asset-type">Subsector: ${escapeHtml(a.subsector)}</div>` : a.assetType ? `<div class="card-asset-type">${escapeHtml(a.assetType)}</div>` : ''}
           </div>
         </div>
         ${cityLine ? `<div class="card-address">${escapeHtml(cityLine)}</div>` : ''}
@@ -2122,6 +2126,7 @@ async function openDetail(id) {
   const kvRows = [
     a.assetType   ? ['Asset Type',   a.assetType]   : null,
     a.sector      ? ['CISA Sector',  a.sector]      : null,
+    a.subsector   ? ['CISA Subsector', a.subsector] : null,
     a.lifeline    ? ['Lifeline',     LIFELINES[a.lifeline].label] : (a.lifelineRaw ? ['Lifeline', a.lifelineRaw] : null),
     a.component   ? ['Component',    a.component]   : null,
     a.subcomp     ? ['Subcomponent', a.subcomp]     : null,
@@ -3845,6 +3850,7 @@ async function airApply() {
       const chunk = creates.slice(i, i + 50);
       const adds = chunk.map(r => { const ap = r.ap;
         const raw = { asset_name: ap.name, sector: 'Transportation Systems', asset_type: 'Airport', component: 'Airports', address: ap.address, city: ap.city, state: 'TN', zip: ap.zip, county: ap.county, latitude: ap.lat, longitude: ap.lon, survey_status: 'Placeholder' };
+        const subK = Object.keys(lf).find(k => /sub.?sector/i.test(k)); if (subK) raw[lf[subK].name] = 'Airports';
         const at = {}; Object.entries(raw).forEach(([k, v]) => { if (lf[k.toLowerCase()]) at[lf[k.toLowerCase()].name] = airCoerce(v, lf[k.toLowerCase()]); });
         return { attributes: at, geometry: { x: ap.lon, y: ap.lat, spatialReference: { wkid: 4326 } } }; });
       const j = await agoCall(`${airSt.layerUrl}/applyEdits`, { adds: JSON.stringify(adds), rollbackOnFailure: 'true' });
