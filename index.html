@@ -744,7 +744,7 @@
     <h2 id="manage-title">Manage users</h2>
     <button type="button" class="sheet-close-btn mg-close" onclick="closeManage()" aria-label="Close user management">×</button>
   </div>
-  <div class="mg-tabs" role="tablist"><button type="button" class="mg-tab on" data-tab="users" role="tab" onclick="setManageTab('users')">Users</button><button type="button" class="mg-tab" data-tab="layers" role="tab" onclick="setManageTab('layers')">Map layers</button><button type="button" class="mg-tab" data-tab="airports" role="tab" onclick="setManageTab('airports')">Airports</button><button type="button" class="mg-tab" data-tab="data" role="tab" onclick="setManageTab('data')">Data</button></div>
+  <div class="mg-tabs" role="tablist"><button type="button" class="mg-tab on" data-tab="users" role="tab" onclick="setManageTab('users')">Users</button><button type="button" class="mg-tab" data-tab="layers" role="tab" onclick="setManageTab('layers')">Map layers</button><button type="button" class="mg-tab" data-tab="data" role="tab" onclick="setManageTab('data')">Data</button></div>
   <div class="mg-intro" id="mg-intro-users">Approved Critical2TN users. <b>Grant edit</b> lets someone update asset records, contact details and photos.</div>
   <div id="manage-body"></div>
 </div>
@@ -3197,7 +3197,6 @@ function setManageTab(t) {
 function renderManage() {
   const body = document.getElementById('manage-body'); if (!body) return;
   if (manageState.tab === 'layers') return renderLayerAdmin(body);
-  if (manageState.tab === 'airports') return renderAirportSetup(body);
   if (manageState.tab === 'data') return renderDataTab(body);
   const s = manageState;
   const hasEdit = u => s.editSet.has(u.username.toLowerCase());
