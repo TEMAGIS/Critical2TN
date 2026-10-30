@@ -561,6 +561,17 @@
   .dt-pre { border-top: 1px dashed var(--border); padding-top: 8px; font-size: 13px; display: grid; gap: 8px; }
   .dt-probs { font-size: 12px; color: #842029; background: #fdf0f1; border-radius: 8px; padding: 8px 10px; line-height: 1.5; }
   .dt-bad { color: #842029; font-weight: 700; }
+  #county-row { display:flex; align-items:center; gap:10px; padding:2px 2px 10px; }
+  #county-row label { font:700 12px 'DM Sans',sans-serif; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); }
+  #county-select { flex:1; min-height:42px; font:16px 'DM Sans',sans-serif; padding:8px 10px; border:2px solid var(--border); border-radius:10px; background:#fff; }
+  .rl-sw.line { width:22px; height:0; border-top:3px solid var(--c); border-radius:2px; background:none; align-self:center; }
+  .county-lbl { display:none; background:transparent; border:none; box-shadow:none; color:#fff; font:700 11px 'DM Sans',sans-serif; letter-spacing:.3px; text-shadow:0 0 3px #000,0 0 3px #000; padding:0; pointer-events:none; }
+  .county-lbl::before { display:none; }
+  .county-labels .county-lbl { display:block; }
+  .county-lbl.sel { display:block; color:#ffd666; font-size:13px; }
+  .ex-two { display:grid; grid-template-columns:1fr; gap:8px; }
+  .ex-two button { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .ex-two button small { font-weight:500; opacity:.85; font-size:11.5px; }
 </style>
 </head>
 <body>
@@ -681,6 +692,7 @@
       </div>
       <div class="active-filters" id="active-filters" aria-label="Active filters" aria-live="polite"></div>
       <div id="filter-drawer" aria-hidden="true" inert>
+        <div id="county-row" hidden><label for="county-select">County</label><select id="county-select" onchange="setCounty(this.value)"><option value="">All counties</option></select></div>
         <nav id="filter-grid" aria-label="Filter assets by CISA sector"></nav>
       </div>
     </div>
@@ -1412,6 +1424,7 @@ async function fetchAssets() {
     return;
   }
   setLoadingState(true);
+  initCountyLayer();
   try { await fetchLayerMeta(); } catch (e) { /* optional: only needed to spot the subsector field */ }
   const outFields = Object.values(FIELDS).join(',');
   // AGOL hosted feature services cap a single query at maxRecordCount
@@ -1731,6 +1744,7 @@ function updateActiveFilterBar() {
   const btn = document.getElementById('filter-toggle-btn');
   const chips = [];
   if (activeFilter !== 'all' && SECTORS[activeFilter]) chips.push({ kind: 'type', label: SECTORS[activeFilter].label });
+  if (activeCounty) chips.push({ kind: 'county', label: `${activeCountyName} County` });
   bar.innerHTML = chips.map(c =>
     `<button class="active-chip" type="button" data-clear="${c.kind}" aria-label="Remove filter: ${c.label}">${c.label}<span class="active-chip-x" aria-hidden="true">×</span></button>`
   ).join('');
@@ -1740,6 +1754,7 @@ function updateActiveFilterBar() {
       const chip = e.target.closest('.active-chip[data-clear]');
       if (!chip) return;
       if (chip.getAttribute('data-clear') === 'type') clearTypeFilter();
+      if (chip.getAttribute('data-clear') === 'county') setCounty('');
     });
   }
   btn.classList.toggle('has-filter', chips.length > 0);
@@ -1755,6 +1770,7 @@ function toggleSort() {
 function getFiltered() {
   let list = assets.filter(a => {
     if (activeFilter !== 'all' && sectorOf(a).key !== activeFilter) return false;
+    if (activeCounty && countyNorm(a.county) !== activeCounty) return false;
     if (searchTerm) {
       const h = `${a.name} ${a.city} ${a.county} ${a.address} ${a.assetType} ${a.sector} ${sectorOf(a).label} ${a.lifelineRaw} ${a.region}`.toLowerCase();
       if (!h.includes(searchTerm)) return false;
@@ -1770,12 +1786,12 @@ function getFiltered() {
 //  LIST RENDERING
 // ════════════════════════════════════════════════════════════════
 function renderList() {
-  updateFilterCounts();
+  updateFilterCounts(); buildCountySelect();
   renderedList = getFiltered();
   document.getElementById('list-count').textContent = `${renderedList.length} asset${renderedList.length !== 1 ? 's' : ''}`;
   const c = document.getElementById('asset-list');
   if (!renderedList.length) {
-    const isFiltering = activeFilter !== 'all' || searchTerm;
+    const isFiltering = activeFilter !== 'all' || searchTerm || activeCounty;
     if (assets.length === 0 || !isFiltering) {
       c.innerHTML = '<div class="empty-state" role="status"><div class="icon" aria-hidden="true">🏛️</div><p>No assets to display.</p></div>';
     } else {
@@ -1947,6 +1963,7 @@ function applyBasemap(key) {
     if (lbl) lbl.textContent = next;
     btn.setAttribute('aria-label', `Switch to ${next} basemap`);
   }
+  if (typeof countyRestyle === 'function') countyRestyle();
 }
 
 function toggleBasemap() {
@@ -1957,6 +1974,7 @@ function initMap() {
   map = L.map('map', { zoomControl: false, attributionControl: false }).setView([35.85, -86.4], 7);
   applyBasemap(currentBasemap);
   L.control.zoom({ position: 'topright' }).addTo(map);
+  map.on('zoomend', () => { if (typeof countyLabelsUpdate === 'function') countyLabelsUpdate(); });
   L.control.attribution({ position: 'bottomleft', prefix: '' }).addTo(map);
   // Custom cluster icons styled to match TEMA blue branding. Three size
   // tiers based on cluster size so a 5-asset cluster doesn't look the
@@ -1991,6 +2009,7 @@ function refreshMarkers() {
   markers = {};
   const layers = [];
   assets.forEach(a => {
+    if (!countyMatches(a)) return;
     const sec = sectorOf(a);
     const color = sec.ink, label = sec.label;
     const popIcon = iconHTML(sec.key, 28);
@@ -2445,8 +2464,10 @@ async function loadUserScope() {
   }
 }
 function refCountyWhere(d) {
-  if (!d.countyField || USER_SCOPE.type !== 'county' || !refLimitCounty || !USER_SCOPE.counties.length) return '';
-  const parts = USER_SCOPE.counties.map(c => `UPPER(${d.countyField}) LIKE '${c.toUpperCase().replace(/'/g, "''")}%'`);
+  if (!d.countyField) return '';
+  const cs = activeCounty ? [activeCountyName] : (USER_SCOPE.type === 'county' && refLimitCounty ? USER_SCOPE.counties : []);
+  if (!cs.length) return '';
+  const parts = cs.map(c => `UPPER(${d.countyField}) LIKE '${c.toUpperCase().replace(/'/g, "''")}%'`);
   return '(' + parts.join(' OR ') + ')';
 }
 function refWhere(d) {
@@ -2664,6 +2685,7 @@ function renderLayersSheet() {
     <h2 id="layers-title" class="rl-title">Map layers</h2>
     <div class="rl-sub">${scope ? escapeHtml(scope) + ' · ' : ''}Layers load only for what's on screen, and only while switched on.</div>
     ${countyToggle}
+    ${countyRowHtml()}
     ${REF_BUNDLES.map(b => `
       <details class="rl-bundle" data-b="${b.key}" ${open.has(b.key) ? 'open' : ''}>
         <summary><span class="rl-bname">${escapeHtml(b.label)}<small>${escapeHtml(b.note)}</small></span><span class="rl-bon" id="rlb-${b.key}"></span></summary>
@@ -2937,12 +2959,12 @@ async function runExportQuery() {
 // ── export sheet
 function exportSelection() {
   const core = drawState.core.filter(a => !drawState.coreOff.has(sectorOf(a).key));
-  const t2 = drawState.t2Off || drawState.t2Status !== 'ok' ? [] : drawState.t2;
+  const t2 = drawState.t2Status !== 'ok' ? [] : drawState.t2;
   return { core, t2, total: core.length + t2.length };
 }
 function renderExportSheet() {
   const body = document.getElementById('export-body'); if (!body) return;
-  const sel = exportSelection(), over = sel.total > EXPORT_CAP;
+  const sel = exportSelection(), overC = sel.core.length > EXPORT_CAP, overT = sel.t2.length > EXPORT_CAP;
   const bySector = {}; drawState.core.forEach(a => { const k = sectorOf(a).key; bySector[k] = (bySector[k] || 0) + 1; });
   const t2Fac = new Set(drawState.t2.map(f => { const p = f.attributes || {}; return p.FacilityId || p.State_Facility_ID || p.FacilityName; })).size;
   const t2Line = { loading: 'Checking Tier II…', unavailable: 'Not available to your account', error: 'Couldn’t reach Tier II',
@@ -2959,15 +2981,13 @@ function renderExportSheet() {
       ${secRows || '<div class="ex-none">None in this area</div>'}
     </div>
     <div class="ex-card ${drawState.t2Status === 'unavailable' ? 'dis' : ''}">
-      <label class="ex-head"><span><input type="checkbox" ${drawState.t2Off || drawState.t2Status !== 'ok' ? '' : 'checked'} ${drawState.t2Status !== 'ok' ? 'disabled' : ''} onchange="toggleExportT2(this.checked)"> Tier II HAZMAT</span><b class="ex-t2" data-s="${drawState.t2Status}"></b></label>
+      <div class="ex-head"><span>Tier II HAZMAT</span><b class="ex-t2" data-s="${drawState.t2Status}"></b></div>
       <div class="ex-none" data-s="${drawState.t2Status}">${escapeHtml(t2Line)}${drawState.t2Status === 'error' ? ' <button class="ex-link" onclick="runExportQuery()">Retry</button>' : ''}</div>
     </div>
-    <div class="ex-total ${over ? 'over' : ''}">${over
-      ? `${sel.total.toLocaleString()} rows is over the ${EXPORT_CAP.toLocaleString()}-row limit. Draw a smaller area or untick something.`
-      : `${sel.total.toLocaleString()} row${sel.total === 1 ? '' : 's'} will be exported (CSV).`}</div>
-    <div class="ex-btns">
-      <button class="ex-pri" type="button" ${sel.total === 0 || over || drawState.t2Status === 'loading' ? 'disabled' : ''} onclick="exportCsv(true)">Share / save CSV</button>
-      <button class="ex-sec2" type="button" ${sel.total === 0 || over || drawState.t2Status === 'loading' ? 'disabled' : ''} onclick="exportCsv(false)">Download</button>
+    ${(overC || overT) ? `<div class="ex-total over">A file is over the ${EXPORT_CAP.toLocaleString()}-row limit. Draw a smaller area${overC ? ' or untick sectors' : ''}.</div>` : ''}
+    <div class="ex-btns ex-two">
+      <button class="ex-pri" type="button" ${sel.core.length === 0 || overC ? 'disabled' : ''} onclick="exportCsv('core')">Download Critical2TN<small>${sel.core.length.toLocaleString()} row${sel.core.length === 1 ? '' : 's'}</small></button>
+      <button class="ex-pri" type="button" ${sel.t2.length === 0 || overT || drawState.t2Status !== 'ok' ? 'disabled' : ''} onclick="exportCsv('t2')">Download Tier II Hazmat<small>${drawState.t2Status === 'loading' ? 'checking…' : sel.t2.length.toLocaleString() + ' row' + (sel.t2.length === 1 ? '' : 's')}</small></button>
     </div>
     <div class="ex-note">${escapeHtml(EXPORT_NOTICE)}</div>`;
 }
@@ -2996,61 +3016,66 @@ function csvCell(v, isText = true) {
   return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 const _pv = (p, name) => { if (!p) return ''; if (p[name] != null) return p[name]; const k = Object.keys(p).find(x => x.toLowerCase() === name.toLowerCase()); return k ? p[k] : ''; };
-const EXPORT_COLS = [
-  ['dataset',            r => r.t2 ? 'Tier II' : 'Critical2TN'],
-  ['name',               r => r.t2 ? _pv(r.p, 'FacilityName') : r.a.name],
-  ['cisa_sector',        r => r.t2 ? '' : sectorOf(r.a).label],
-  ['sector_as_entered',  r => r.t2 ? '' : r.a.sector],
-  ['lifeline',           r => r.t2 ? '' : r.a.lifelineRaw],
-  ['asset_type',         r => r.t2 ? '' : r.a.assetType],
-  ['component',          r => r.t2 ? '' : r.a.component],
-  ['subcomponent',       r => r.t2 ? '' : r.a.subcomp],
-  ['address',            r => r.t2 ? _pv(r.p, 'Street') : r.a.address],
-  ['city',               r => r.t2 ? _pv(r.p, 'City') : r.a.city],
-  ['state',              r => r.t2 ? _pv(r.p, 'State') : r.a.state],
-  ['zip',                r => r.t2 ? _pv(r.p, 'Zip') : r.a.zip],
-  ['county',             r => r.t2 ? _pv(r.p, 'County') : r.a.county],
-  ['region',             r => r.t2 ? '' : r.a.region],
-  ['latitude',           r => r.t2 ? (r.f.geometry ? r.f.geometry.y : _pv(r.p, 'Latitude')) : r.a.lat, false],
-  ['longitude',          r => r.t2 ? (r.f.geometry ? r.f.geometry.x : _pv(r.p, 'Longitude')) : r.a.lng, false],
-  ['hsip_id',            r => r.t2 ? '' : r.a.hsipId],
-  ['contact_name',       r => r.t2 ? '' : r.a.contactName],
-  ['contact_agency',     r => r.t2 ? '' : r.a.contactAgency],
-  ['contact_phone',      r => r.t2 ? '' : r.a.contactPhone],
-  ['contact_email',      r => r.t2 ? '' : r.a.contactEmail],
-  ['t2_company',         r => r.t2 ? _pv(r.p, 'Company_Name') : ''],
-  ['t2_facility_id',     r => r.t2 ? (_pv(r.p, 'FacilityId') || _pv(r.p, 'State_Facility_ID')) : ''],
-  ['t2_chemical',        r => r.t2 ? _pv(r.p, 'ChemicalName') : ''],
-  ['t2_cas_number',      r => r.t2 ? _pv(r.p, 'CASNumber') : ''],
-  ['t2_max_daily_qty',   r => r.t2 ? _pv(r.p, 'MaxDailyQty') : ''],
-  ['t2_avg_daily_qty',   r => r.t2 ? _pv(r.p, 'AvgDailyQty') : ''],
-  ['t2_max_container',   r => r.t2 ? _pv(r.p, 'MaxAmountInLargestContainer') : ''],
-  ['t2_ehs',             r => r.t2 ? _pv(r.p, 'EHS') : ''],
-  ['t2_filing_year',     r => r.t2 ? _pv(r.p, 'Filing_Year') : ''],
-  ['t2_filing_type',     r => r.t2 ? _pv(r.p, 'Filing_Type') : ''],
-  ['t2_contact_info',    r => r.t2 ? _pv(r.p, 'ContactInfo') : ''],
+// Two files, each with its own columns (Tier II has a different data model from Critical2TN).
+const CORE_COLS = [
+  ['name',              a => a.name],
+  ['cisa_sector',       a => sectorOf(a).label],
+  ['cisa_subsector',    a => a.subsector],
+  ['sector_as_entered', a => a.sector],
+  ['lifeline',          a => a.lifelineRaw],
+  ['asset_type',        a => a.assetType],
+  ['component',         a => a.component],
+  ['subcomponent',      a => a.subcomp],
+  ['address',           a => a.address],
+  ['city',              a => a.city],
+  ['state',             a => a.state],
+  ['zip',               a => a.zip],
+  ['county',            a => a.county],
+  ['region',            a => a.region],
+  ['latitude',          a => a.lat, false],
+  ['longitude',         a => a.lng, false],
+  ['hsip_id',           a => a.hsipId],
+  ['contact_name',      a => a.contactName],
+  ['contact_agency',    a => a.contactAgency],
+  ['contact_phone',     a => a.contactPhone],
+  ['contact_email',     a => a.contactEmail],
 ];
-function buildCsv() {
+const T2_COLS = [
+  ['facility_name',     f => _pv(f.attributes, 'FacilityName')],
+  ['company',           f => _pv(f.attributes, 'Company_Name')],
+  ['facility_id',       f => _pv(f.attributes, 'FacilityId')],
+  ['state_facility_id', f => _pv(f.attributes, 'State_Facility_ID')],
+  ['address',           f => _pv(f.attributes, 'Street')],
+  ['city',              f => _pv(f.attributes, 'City')],
+  ['state',             f => _pv(f.attributes, 'State')],
+  ['zip',               f => _pv(f.attributes, 'Zip')],
+  ['county',            f => _pv(f.attributes, 'County')],
+  ['latitude',          f => f.geometry ? f.geometry.y : _pv(f.attributes, 'Latitude'), false],
+  ['longitude',         f => f.geometry ? f.geometry.x : _pv(f.attributes, 'Longitude'), false],
+  ['chemical',          f => _pv(f.attributes, 'ChemicalName')],
+  ['cas_number',        f => _pv(f.attributes, 'CASNumber')],
+  ['max_daily_qty',     f => _pv(f.attributes, 'MaxDailyQty'), false],
+  ['avg_daily_qty',     f => _pv(f.attributes, 'AvgDailyQty'), false],
+  ['max_container_qty', f => _pv(f.attributes, 'MaxAmountInLargestContainer'), false],
+  ['ehs',               f => _pv(f.attributes, 'EHS')],
+  ['filing_year',       f => _pv(f.attributes, 'Filing_Year'), false],
+  ['filing_type',       f => _pv(f.attributes, 'Filing_Type')],
+  ['contact_info',      f => _pv(f.attributes, 'ContactInfo')],
+];
+function buildCsv(kind) {
   const sel = exportSelection(), now = new Date().toISOString(), who = (TOKEN && TOKEN.username) || '';
-  const rows = [...sel.core.map(a => ({ a })), ...sel.t2.map(f => ({ t2: true, f, p: f.attributes || {} }))];
-  const head = EXPORT_COLS.map(c => c[0]).concat(['exported_by', 'exported_utc', 'handling_notice']).join(',');
-  const lines = rows.map(r => EXPORT_COLS.map(c => csvCell(c[1](r), c[2] !== false)).concat([csvCell(who), csvCell(now), csvCell(EXPORT_NOTICE)]).join(','));
-  return '﻿' + [head, ...lines].join('\r\n') + '\r\n';
+  const cols = kind === 't2' ? T2_COLS : CORE_COLS, rows = kind === 't2' ? sel.t2 : sel.core;
+  const head = cols.map(c => c[0]).concat(['exported_by', 'exported_utc', 'handling_notice']).join(',');
+  const lines = rows.map(r => cols.map(c => csvCell(c[1](r), c[2] !== false)).concat([csvCell(who), csvCell(now), csvCell(EXPORT_NOTICE)]).join(','));
+  return '\uFEFF' + [head, ...lines].join('\r\n') + '\r\n';
 }
-async function exportCsv(preferShare) {
-  const sel = exportSelection();
-  if (!sel.total || sel.total > EXPORT_CAP) return;
-  const d = new Date(), pad = n => String(n).padStart(2, '0');
-  const name = `Critical2TN_export_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.csv`;
-  const blob = new Blob([buildCsv()], { type: 'text/csv;charset=utf-8' });
-  if (preferShare && navigator.canShare && navigator.share) {
-    const file = new File([blob], name, { type: 'text/csv' });
-    if (navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'Critical2TN export', text: EXPORT_NOTICE }); return; }
-      catch (err) { if (err && err.name === 'AbortError') return; /* otherwise fall back to download */ }
-    }
-  }
-  const url = URL.createObjectURL(blob), a = document.createElement('a');
+function exportCsv(kind) {
+  kind = kind === 't2' ? 't2' : 'core';
+  const sel = exportSelection(), n = kind === 't2' ? sel.t2.length : sel.core.length;
+  if (!n || n > EXPORT_CAP) return;
+  const d = new Date(), pad = x => String(x).padStart(2, '0');
+  const name = `${kind === 't2' ? 'TierII_Hazmat' : 'Critical2TN'}_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.csv`;
+  const url = URL.createObjectURL(new Blob([buildCsv(kind)], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a');
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
@@ -3615,6 +3640,20 @@ function linkedValueHtml(f, v) {
 }
 const linkedHas = v => v !== null && v !== undefined && v !== '';
 
+// Query with a few parameter variants (some hosted views reject certain options), and say which step failed.
+async function linkedQuery(label, url, where) {
+  const variants = [
+    ['POST', { where, outFields: '*', returnGeometry: 'false' }],
+    ['GET',  { where, outFields: '*', returnGeometry: 'false' }],
+    ['POST', { where, outFields: '*' }],
+  ];
+  let last;
+  for (const [m, p] of variants) {
+    try { return await agoCall(`${url}/query`, p, m); } catch (err) { last = err; if (err.code === 498 || err.code === 499 || err.code === 403) break; }
+  }
+  console.warn('[Critical2TN] linked query failed:', label, url, where, last);
+  throw new Error(`${label}: ${last && last.message ? last.message : 'query failed'}${last && last.details && last.details.length ? ' (' + last.details.join('; ') + ')' : ''}`);
+}
 async function loadLinkedDetails(a) {
   const box = document.getElementById('linked-details');
   const tables = linkedTablesFor(a);
@@ -3624,15 +3663,15 @@ async function loadLinkedDetails(a) {
   const stale = () => { const b = document.getElementById('linked-details'); return !b || b.dataset.aid !== String(a.id); };
   try {
     await ensureFreshToken(); await fetchLayerMeta();
-    const have = (LAYER_FIELDS || []).map(n => n.toLowerCase());
-    const gField = (LAYER_FIELDS || []).find(n => n.toLowerCase() === 'globalid');
-    if (!gField) throw new Error('The Critical2TN layer has no GlobalID field to link on.');
-    const sField = (LAYER_FIELDS || []).find(n => n.toLowerCase() === 'survey_status') || '';
-    const q = await agoCall(`${CONFIG.serviceUrl}/query`, { where: `OBJECTID=${Number(a.objectId)}`, outFields: [gField, sField].filter(Boolean).join(','), returnGeometry: 'false' }, 'GET');
+    const oid = Number(a.objectId);
+    if (!Number.isFinite(oid)) throw new Error('This record has no OBJECTID.');
+    const q = await linkedQuery('Critical2TN layer', CONFIG.serviceUrl, `OBJECTID=${oid}`);
     const at = ((q.features || [])[0] || {}).attributes || {};
-    const guid = at[gField] || at[gField.toLowerCase()] || '';
+    const lk = k => Object.keys(at).find(x => x.toLowerCase() === k);
+    const guid = (lk('globalid') ? at[lk('globalid')] : '') || '';
+    const sField = (LAYER_FIELDS || []).find(n => n.toLowerCase() === 'survey_status') || '';
     if (!guid) throw new Error('Couldn’t read this record’s GlobalID.');
-    const r = await agoCall(`${t.url}/query`, { where: `${t.linkField}='${sqlQuote(guid)}'`, outFields: '*', returnGeometry: 'false', resultRecordCount: '1' }, 'GET');
+    const r = await linkedQuery('details table', t.url, `${t.linkField}='${sqlQuote(guid)}'`);
     if (stale()) return;
     const row = ((r.features || [])[0] || {}).attributes || null;
     Object.assign(linkedState, { a, t, guid, row, layerStatus: sField ? (at[sField] ?? at[sField.toLowerCase()] ?? null) : null, layerStatusField: sField });
@@ -4177,6 +4216,87 @@ function renderDataTab(body) {
     if (act === 'url') el.oninput = () => { airSt.tableUrl = el.value.trim().replace(/\/+$/, ''); };
     if (act === 'file') el.onchange = () => { const f = el.files && el.files[0]; el.value = ''; if (f) (k === 'master' ? masterPreview : airPreview)(f); };
   });
+}
+// ════════════ COUNTY BOUNDARIES + COUNTY FILTER ════════════
+const COUNTY_LAYER_URL = 'https://services1.arcgis.com/kILp9lqGUeOhnDbI/arcgis/rest/services/TN_Counties_Census_2020/FeatureServer/0';
+const COUNTY_PREF_KEY = 'c2tn_county_lines';
+let activeCounty = '', activeCountyName = '';                       // normalised key + display name ('' = all counties)
+let countyLayer = null, countyLines = true, countyStatus = 'idle';  // idle | loading | ready | unavailable
+try { countyLines = localStorage.getItem(COUNTY_PREF_KEY) !== '0'; } catch (e) {}
+const countyNorm = s => String(s || '').toLowerCase().replace(/\s+county\s*$/, '').replace(/[^a-z0-9]/g, '');
+const countyShow = s => String(s || '').trim().replace(/\s+county\s*$/i, '');
+const countyMatches = a => !activeCounty || countyNorm(a.county) === activeCounty;
+function countyFeatureName(p) {
+  const k = Object.keys(p || {}).find(x => /^(name|namelsad|county|cnty_?name|county_?name|name10)$/i.test(x));
+  return k ? countyShow(p[k]) : '';
+}
+function countyStyle(f) {
+  const sel = activeCounty && countyNorm(countyFeatureName(f.properties)) === activeCounty;
+  if (sel) return { color: '#ffbf47', weight: 3.5, opacity: 1, fillColor: '#ffbf47', fillOpacity: 0.07, interactive: false };
+  return { color: currentBasemap === 'streets' ? '#5f6f94' : '#ffffff', weight: activeCounty ? 0.8 : 1.3, opacity: activeCounty ? 0.5 : 0.85, fill: false, interactive: false };
+}
+function countyRestyle() {
+  if (!countyLayer) return;
+  countyLayer.setStyle(countyStyle);
+  countyLayer.eachLayer(l => { const t = l.getTooltip && l.getTooltip(), el = t && t.getElement && t.getElement();
+    if (el) el.classList.toggle('sel', !!activeCounty && countyNorm(countyFeatureName(l.feature.properties)) === activeCounty); });
+  if (countyLayer && map.getPane('counties')) map.getPane('counties').style.display = countyLines ? '' : 'none';
+}
+function countyLabelsUpdate() {
+  if (!map) return; const z = map.getZoom();
+  map.getContainer().classList.toggle('county-labels', countyLines && z >= 8 && z <= 11);
+}
+async function initCountyLayer() {
+  if (!map || countyLayer || countyStatus === 'loading') return;
+  countyStatus = 'loading'; refreshCountyUi();
+  try {
+    await ensureFreshToken();
+    const gj = await agoCall(`${COUNTY_LAYER_URL}/query`, { where: '1=1', outFields: '*', returnGeometry: 'true', outSR: '4326', maxAllowableOffset: '0.002', geometryPrecision: '4', f: 'geojson' });
+    if (!gj || !gj.features || !gj.features.length) throw new Error('no counties returned');
+    if (!map.getPane('counties')) { const p = map.createPane('counties'); p.style.zIndex = 395; p.style.pointerEvents = 'none'; }
+    countyLayer = L.geoJSON(gj, { pane: 'counties', interactive: false, style: countyStyle, onEachFeature: (f, l) => {
+      const n = countyFeatureName(f.properties); if (n) l.bindTooltip(n, { permanent: true, direction: 'center', className: 'county-lbl', interactive: false });
+    } }).addTo(map);
+    countyStatus = 'ready'; countyRestyle(); countyLabelsUpdate();
+    if (activeCounty) countyZoom();
+  } catch (err) { countyStatus = 'unavailable'; console.warn('[Critical2TN] county boundaries unavailable', err); }
+  refreshCountyUi();
+}
+function setCountyLines(on) {
+  countyLines = !!on; try { localStorage.setItem(COUNTY_PREF_KEY, on ? '1' : '0'); } catch (e) {}
+  if (on && !countyLayer) initCountyLayer(); else countyRestyle();
+  countyLabelsUpdate();
+}
+function countyRowHtml() {
+  if (countyStatus === 'unavailable') return '';
+  return `<label class="rl-row"><input type="checkbox" ${countyLines ? 'checked' : ''} onchange="setCountyLines(this.checked)">
+    <span class="rl-sw line" style="--c:#5f6f94"></span><span class="rl-name">County boundaries<small id="rls-county">${countyStatus === 'loading' ? 'Loading…' : 'Outlines and names'}</small></span></label>`;
+}
+function refreshCountyUi() { const el = document.getElementById('rls-county'); if (el) el.textContent = countyStatus === 'loading' ? 'Loading…' : 'Outlines and names'; }
+function countyZoom() {
+  let b = null;
+  if (countyLayer) countyLayer.eachLayer(l => { if (countyNorm(countyFeatureName(l.feature.properties)) === activeCounty) b = l.getBounds(); });
+  if (!b) { const pts = assets.filter(countyMatches).map(a => [a.lat, a.lng]).filter(p => p[0] != null && p[1] != null); if (pts.length) b = L.latLngBounds(pts); }
+  if (b && b.isValid()) map.fitBounds(b, { padding: [30, 30], maxZoom: 12 });
+}
+let _countySig = '';
+function buildCountySelect() {
+  const sel = document.getElementById('county-select'), row = document.getElementById('county-row'); if (!sel || !row) return;
+  const m = new Map(); assets.forEach(a => { const k = countyNorm(a.county); if (k && !m.has(k)) m.set(k, countyShow(a.county)); });
+  const list = [...m.entries()].sort((x, y) => x[1].localeCompare(y[1]));
+  const sig = list.map(x => x[0]).join('|') + '#' + activeCounty;
+  row.hidden = list.length < 2 && !activeCounty;
+  if (sig === _countySig) return; _countySig = sig;
+  sel.innerHTML = `<option value="">All counties</option>` + list.map(([k, n]) => `<option value="${escapeHtml(k)}" ${k === activeCounty ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
+}
+function setCounty(key) {
+  activeCounty = key || ''; activeCountyName = '';
+  if (activeCounty) { const a = assets.find(x => countyNorm(x.county) === activeCounty); activeCountyName = a ? countyShow(a.county) : activeCounty; }
+  const sel = document.getElementById('county-select'); if (sel) sel.value = activeCounty;
+  updateActiveFilterBar(); refreshMarkers(); renderList(); countyRestyle();
+  if (activeCounty) countyZoom();
+  if (typeof refreshRefLayers === 'function') refreshRefLayers(true);
+  if (activeCounty) toggleFilterDrawer(true);
 }
 async function startApp() {
   buildFilterGrid();
