@@ -1464,6 +1464,13 @@ async function fetchAssets() {
       if (feats.length === 0) break;
     }
     if (safety <= 0) console.warn('[Critical2TN] paging hit safety cap — some records may not have loaded');
+    if (!allFeatures.length) {
+      const w = assetScopeWhere();
+      console.warn('[Critical2TN] 0 records returned. scope:', USER_SCOPE.type, USER_SCOPE.counties, 'where:', w, 'groups:', USER_SCOPE.groups);
+      setLoadingState(false);
+      showError(`No Critical2TN records came back.<br><small>Scope: ${escapeHtml(USER_SCOPE.type)}${USER_SCOPE.counties.length ? ' (' + escapeHtml(USER_SCOPE.counties.join(', ')) + ')' : ''} · filter: ${escapeHtml(w)}<br>Your groups: ${escapeHtml((USER_SCOPE.groups || []).join('; ') || 'none found')}<br>${USER_SCOPE.type === 'county' ? 'If the county name looks right, the layer may be shared to a different group or the county field may be spelled differently.' : 'The layer may not be shared with any of your groups.'}</small>`);
+      return;
+    }
     // Diagnostic: log the field names + sample values on the first
     // feature so it's easy to confirm contact_* fields are actually
     // being returned by the view. Open DevTools console to see this.
