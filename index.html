@@ -4401,7 +4401,7 @@ async function startApp() {
   if (CONFIG.refreshInterval > 0) {
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(fetchAssets, CONFIG.refreshInterval);
-  }
+  } 
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
