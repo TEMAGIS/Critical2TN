@@ -1425,6 +1425,7 @@ async function fetchAssets() {
     return;
   }
   setLoadingState(true);
+  await Promise.race([ensureUserScope(), new Promise(r => setTimeout(r, 4000))]);
   initCountyLayer();
   try { await fetchLayerMeta(); } catch (e) { /* optional: only needed to spot the subsector field */ }
   const outFields = Object.values(FIELDS).join(',');
@@ -1442,7 +1443,7 @@ async function fetchAssets() {
     let safety = 50;   // hard cap: never make more than 50 paged requests
     while (more && safety-- > 0) {
       const params = new URLSearchParams({
-        where:             '1=1',
+        where:             assetScopeWhere(),
         outFields,
         returnGeometry:    'true',
         outSR:             '4326',
@@ -2437,6 +2438,14 @@ let refRenderer = null, refDebounce = null, refTimer = null;
 // ── who is this user? (scope only picks defaults; ArcGIS sharing enforces access)
 let USER_SCOPE = { type: 'unknown', counties: [], groups: [] };
 let refLimitCounty = true;
+let _scopeP = null;
+const ensureUserScope = () => _scopeP || (_scopeP = loadUserScope());
+// County users only load their own county's Critical2TN records (app-side convenience; ArcGIS sharing is the real control).
+function assetScopeWhere() {
+  if (USER_SCOPE.type !== 'county' || !USER_SCOPE.counties.length) return '1=1';
+  const f = FIELDS.county || 'county';
+  return '(' + USER_SCOPE.counties.map(c => `UPPER(${f}) LIKE '${c.toUpperCase().replace(/'/g, "''")}%'`).join(' OR ') + ')';
+}
 async function loadUserScope() {
   try {
     const res = await fetch(`https://www.arcgis.com/sharing/rest/community/self?f=json&token=${encodeURIComponent(TOKEN.accessToken)}`);
@@ -2678,7 +2687,7 @@ function refUpdateUi() {
 function renderLayersSheet() {
   const body = document.getElementById('layers-body'); if (!body) return;
   const open = new Set([...body.querySelectorAll('details[open]')].map(x => x.dataset.b));
-  const scope = USER_SCOPE.type === 'county' ? `Your access: ${USER_SCOPE.counties.join(', ')} County`
+  const scope = USER_SCOPE.type === 'county' ? `Your access: ${USER_SCOPE.counties.join(', ')} County only`
               : USER_SCOPE.type === 'statewide' ? 'Your access: statewide'
               : USER_SCOPE.type === 'none' ? 'Your account isn’t in an access group' : '';
   const countyToggle = USER_SCOPE.type === 'county' ? `
@@ -2733,7 +2742,7 @@ async function initRefLayers() {
   refTimer = setInterval(() => refreshRefLayers(false, true), 60000);
   refUpdateUi();
   // Learn the user's scope first (max 2.5 s) so a county user's first request is already filtered.
-  await Promise.race([Promise.all([loadUserScope(), loadMapSettings()]), new Promise(r => setTimeout(r, 3000))]);
+  await Promise.race([Promise.all([ensureUserScope(), loadMapSettings()]), new Promise(r => setTimeout(r, 3000))]);
   if (prefs && Array.isArray(prefs.on)) prefs.on.forEach(k => REF_BY_KEY[k] && setRefLayerOn(k, true, { silent: true }));
   refUpdateUi();
 }
