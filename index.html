@@ -2445,6 +2445,15 @@ let refRenderer = null, refDebounce = null, refTimer = null;
 // ── who is this user? (scope only picks defaults; ArcGIS sharing enforces access)
 let USER_SCOPE = { type: 'unknown', counties: [], groups: [] };
 let refLimitCounty = true;
+// A county group is "<County> County Share" or "Critical2TN <County> County". Returns the county name or ''.
+function countyFromGroupTitle(t) {
+  t = String(t || '').trim();
+  let m = /^(.+?)\s+County\s+Share$/i.exec(t);
+  if (m && !/^(tema|putnam county tema)$/i.test(m[1].trim())) return m[1].trim();
+  m = /^critical\s*2\s*tn\s+(.+?)\s+County$/i.exec(t);
+  if (m && !/^(statewide|secure mfa|staging|approval|user|edit|manag)/i.test(m[1].trim())) return m[1].trim();
+  return '';
+}
 let _scopeP = null;
 const ensureUserScope = () => _scopeP || (_scopeP = loadUserScope());
 // County users only load their own county's Critical2TN records (app-side convenience; ArcGIS sharing is the real control).
@@ -2463,16 +2472,12 @@ async function loadUserScope() {
     // A county group ("Critical2TN <County>") limits them to that county; otherwise they see statewide.
     const accessIds = new Set((C2TN.userListGroups || []).map(g => g.id).concat(C2TN.secureMfaGroupId));
     const hasAccess = (me.groups || []).some(g => accessIds.has(g.id));
-    for (const t of titles) {
-      const m = /^critical2tn\s+(.+)$/i.exec(t);
-      if (!m) continue;
-      const rest = m[1].trim();
-      if (/^(statewide|secure mfa|staging|user management|edit|manager)/i.test(rest)) continue;
-      counties.push(rest.replace(/\s+county$/i, ''));
-    }
+    for (const t of titles) { const c = countyFromGroupTitle(t); if (c && !counties.includes(c)) counties.push(c); }
+    // Staff who are in many county shares are effectively statewide.
+    const wide = counties.length >= (C2TN.statewideCountyThreshold || 10);
     USER_SCOPE = {
-      type: counties.length ? 'county' : (hasAccess ? 'statewide' : 'none'),
-      counties,
+      type: wide ? (hasAccess ? 'statewide' : 'none') : (counties.length ? 'county' : (hasAccess ? 'statewide' : 'none')),
+      counties: wide ? [] : counties,
       groups: titles,
       groupIds: (me.groups || []).map(g => g.id),
     };
@@ -3287,12 +3292,10 @@ async function checkCountyGroups() {
   try {
     const groups = []; let st = 1, guard = 10;
     while (st > 0 && guard-- > 0) {
-      const j = await agoCall(`${AGO_REST}/community/groups`, { q: 'title:"Critical2TN"', num: '100', start: String(st) }, 'GET');
+      const j = await agoCall(`${AGO_REST}/community/groups`, { q: 'title:"County Share" OR title:"Critical2TN"', num: '100', start: String(st) }, 'GET');
       groups.push(...(j.results || [])); st = j.nextStart && j.nextStart > 0 ? j.nextStart : -1;
     }
-    const skip = /^(statewide|secure mfa|staging|user management|editors?|managers?)/i;
-    const cg = groups.map(g => ({ g, m: /^critical2tn\s+(.+)$/i.exec(String(g.title || '').trim()) }))
-      .filter(x => x.m && !skip.test(x.m[1].trim())).map(x => ({ id: x.g.id, county: x.m[1].trim().replace(/\s+county$/i, '') }));
+    const cg = groups.map(g => ({ id: g.id, county: countyFromGroupTitle(g.title) })).filter(x => x.county);
     s.users.forEach(u => { u.counties = []; });
     const byName = new Map(s.users.map(u => [u.username.toLowerCase(), u]));
     let failed = 0, i = 0;
@@ -4401,7 +4404,7 @@ async function startApp() {
   if (CONFIG.refreshInterval > 0) {
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(fetchAssets, CONFIG.refreshInterval);
-  } 
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
