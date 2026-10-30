@@ -24,7 +24,7 @@ window.C2TN_CONFIG = {
   // Whose names appear in the Manage > Users list while requireSecureMfa is false.
   // Add or remove groups freely (counties can be added the same way: { id: '…', label: 'Davidson' }).
   userListGroups: [
-    { id: '1b6039b5cda547cfa4eb527518ecf009', label: 'Statewide' },    // Critical2TN Statewide No MFA
+    { id: '33fc71dc1fca4fd19fefe8ef5bde9112', label: 'Critical Infrastructure' },  // Critical Infrastructure (approved)
     { id: '25ca696fb06f4e64afb2f0450c066d22', label: 'Staging' },      // Critical2TN Staging (approved, MFA not confirmed yet)
     { id: 'dafcbf87b71c48528d197b64785ac10b', label: 'Secure MFA' },   // Critical2TN Secure MFA
   ],

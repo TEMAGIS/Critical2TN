@@ -2443,18 +2443,20 @@ async function loadUserScope() {
     const me = await res.json();
     const titles = (me.groups || []).map(g => String(g.title || '').trim());
     const counties = [];
-    let statewide = false;
+    // Access = member of one of the access groups (Critical Infrastructure / Staging / Secure MFA).
+    // A county group ("Critical2TN <County>") limits them to that county; otherwise they see statewide.
+    const accessIds = new Set((C2TN.userListGroups || []).map(g => g.id).concat(C2TN.secureMfaGroupId));
+    const hasAccess = (me.groups || []).some(g => accessIds.has(g.id));
     for (const t of titles) {
       const m = /^critical2tn\s+(.+)$/i.exec(t);
       if (!m) continue;
       const rest = m[1].trim();
-      if (/^statewide/i.test(rest)) statewide = true;
-      else if (/^(secure mfa|staging)$/i.test(rest)) continue;
-      else counties.push(rest.replace(/\s+county$/i, ''));
+      if (/^(statewide|secure mfa|staging|user management|edit|manager)/i.test(rest)) continue;
+      counties.push(rest.replace(/\s+county$/i, ''));
     }
     USER_SCOPE = {
-      type: statewide ? 'statewide' : (counties.length ? 'county' : 'unknown'),
-      counties: statewide ? [] : counties,
+      type: counties.length ? 'county' : (hasAccess ? 'statewide' : 'none'),
+      counties,
       groups: titles,
       groupIds: (me.groups || []).map(g => g.id),
     };
@@ -2677,7 +2679,8 @@ function renderLayersSheet() {
   const body = document.getElementById('layers-body'); if (!body) return;
   const open = new Set([...body.querySelectorAll('details[open]')].map(x => x.dataset.b));
   const scope = USER_SCOPE.type === 'county' ? `Your access: ${USER_SCOPE.counties.join(', ')} County`
-              : USER_SCOPE.type === 'statewide' ? 'Your access: statewide' : '';
+              : USER_SCOPE.type === 'statewide' ? 'Your access: statewide'
+              : USER_SCOPE.type === 'none' ? 'Your account isn’t in an access group' : '';
   const countyToggle = USER_SCOPE.type === 'county' ? `
     <label class="rl-county"><input type="checkbox" ${refLimitCounty ? 'checked' : ''} onchange="setRefCountyLimit(this.checked)">
       <span>Limit layers to my county<small>Faster and tidier. Turn off to see neighbouring counties (mutual aid).</small></span></label>` : '';
@@ -3106,7 +3109,7 @@ const C2TN_DEFAULTS = {
                                                            //        and the user list shows Secure MFA members only
   secureMfaGroupId: 'dafcbf87b71c48528d197b64785ac10b',   // Critical2TN Secure MFA
   userListGroups: [                                        // approved users = members of these groups (while MFA isn't required)
-    { id: '1b6039b5cda547cfa4eb527518ecf009', label: 'Statewide' },
+    { id: '33fc71dc1fca4fd19fefe8ef5bde9112', label: 'Critical Infrastructure' },
     { id: '25ca696fb06f4e64afb2f0450c066d22', label: 'Staging' },
     { id: 'dafcbf87b71c48528d197b64785ac10b', label: 'Secure MFA' },
   ],
@@ -3166,7 +3169,7 @@ async function groupMembers(groupId) {
 }
 async function loadManageUsers() {
   const s = manageState; s.loading = true; s.error = ''; s.editErr = ''; renderManage();
-  s.listWarn = '';
+  s.listWarn = ''; s.cgDone = false; s.cgMsg = '';
   const groups = manageListGroups();
   const settled = await Promise.allSettled(groups.map(g => groupMembers(g.id)));
   const map = new Map(), failed = [];
@@ -3178,6 +3181,28 @@ async function loadManageUsers() {
       cur.tags.push(groups[i].label); map.set(u.username, cur);
     });
   });
+  // Managers and editors belong in the list too, even if they're in none of the access groups above.
+  const roleGroups = [[MANAGE_GROUP_ID, 'Manager'], [EDIT_GROUP_ID, 'Editor']].filter(g => g[0]);
+  const roleRes = await Promise.allSettled(roleGroups.map(g => groupMembers(g[0])));
+  roleRes.forEach((r, i) => {
+    if (r.status !== 'fulfilled') return;
+    r.value.forEach(u => {
+      if (!u || !u.username) return;
+      const cur = map.get(u.username) || { username: u.username, name: u.fullname || u.fullName || u.username, lastLogin: 0, tags: [] };
+      (cur.roles = cur.roles || []).push(roleGroups[i][1]); map.set(u.username, cur);
+    });
+  });
+  // Group member lists don't include sign-in dates; org admins can read them from the org user list.
+  const logins = new Map(); s.loginKnown = false;
+  try {
+    let st = 1, guard = 30;
+    while (st > 0 && guard-- > 0) {
+      const j = await agoCall(`${AGO_REST}/portals/self/users`, { num: '100', start: String(st) }, 'GET');
+      (j.users || []).forEach(u => { if (u.username && 'lastLogin' in u) { s.loginKnown = true; logins.set(u.username.toLowerCase(), u.lastLogin > 0 ? u.lastLogin : 0); } });
+      st = j.nextStart && j.nextStart > 0 ? j.nextStart : -1;
+    }
+  } catch (err) { console.info('[Critical2TN] org sign-in dates not available:', err.message); }
+  map.forEach(u => { const l = logins.get(u.username.toLowerCase()); if (l !== undefined) u.lastLogin = l; });
   s.users = [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   if (failed.length === groups.length) s.error = `Couldn’t load the user list: ${failed.join('; ')}. Your account needs to be able to see the members of these groups (see the setup notes).`;
   else if (failed.length) s.listWarn = `Some groups couldn’t be read, so the list may be incomplete: ${failed.join('; ')}.`;
@@ -3203,7 +3228,7 @@ function renderManage() {
   const hasEdit = u => s.editSet.has(u.username.toLowerCase());
   const q = s.q.trim().toLowerCase();
   const list = s.users.filter(u => (!q || (u.name + ' ' + u.username).toLowerCase().includes(q)) &&
-    (s.filter === 'all' || (s.filter === 'edit' ? hasEdit(u) : !hasEdit(u))));
+    (s.filter === 'all' || (s.filter === 'nocounty' ? !(u.counties || []).length : s.filter === 'edit' ? hasEdit(u) : !hasEdit(u))));
   const nEdit = s.users.filter(hasEdit).length;
   const chip = (k, label, n) => `<button type="button" class="mg-chip ${s.filter === k ? 'on' : ''}" data-filter="${k}">${label} <b>${n}</b></button>`;
   const banners = [
@@ -3218,7 +3243,7 @@ function renderManage() {
     return `<div class="mg-row">
       <div class="mg-av" aria-hidden="true">${escapeHtml(initials(u.name))}</div>
       <div class="mg-who"><div class="mg-name">${escapeHtml(u.name)}${me ? ' <span class="mg-me">you</span>' : ''}</div>
-        <div class="mg-sub">${escapeHtml(u.username)} · last sign-in ${escapeHtml(fmtLogin(u.lastLogin))}${u.tags && u.tags.includes('Staging') && u.tags.length === 1 ? ' · <b class="mg-stg">MFA not confirmed yet</b>' : ''}</div></div>
+        <div class="mg-sub">${escapeHtml(u.username)} · ${s.loginKnown ? 'last sign-in ' + escapeHtml(fmtLogin(u.lastLogin)) : 'sign-in date n/a'}${u.roles && u.roles.length ? ' · <b>' + escapeHtml(u.roles.join(' + ')) + '</b>' : ''}${u.tags && u.tags.includes('Staging') && u.tags.length === 1 ? ' · <b class="mg-stg">MFA not confirmed yet</b>' : ''}${!u.tags.length ? ' · <b class="mg-stg">no access group</b>' : ''}${s.cgDone ? ((u.counties || []).length ? ' · ' + escapeHtml(u.counties.join(', ')) + ' Co.' : ' · Statewide') : ''}</div></div>
       <div class="mg-act">${on ? '<span class="mg-badge">Can edit</span>' : ''}
         <button type="button" class="mg-btn ${on ? 'rm' : 'add'} ${conf ? 'conf' : ''}" data-u="${escapeHtml(u.username)}" ${busy || !EDIT_GROUP_ID ? 'disabled' : ''}>${busy ? '…' : conf ? 'Tap to confirm' : (on ? 'Remove edit' : 'Grant edit')}</button></div>
     </div>`;
@@ -3227,7 +3252,9 @@ function renderManage() {
     ${banners}
     <div class="mg-tools">
       <input id="manage-search" type="search" placeholder="Search name or username" value="${escapeHtml(s.q)}" aria-label="Search users" autocomplete="off">
-      <div class="mg-chips">${chip('all', 'All', s.users.length)}${chip('edit', 'Can edit', nEdit)}${chip('none', 'No edit', s.users.length - nEdit)}
+      ${s.cgMsg ? `<div class="mg-sub" style="margin:2px 0 8px">${escapeHtml(s.cgMsg)}</div>` : ''}
+      <div class="mg-chips">${chip('all', 'All', s.users.length)}${chip('edit', 'Can edit', nEdit)}${chip('none', 'No edit', s.users.length - nEdit)}${s.cgDone ? chip('nocounty', 'Statewide', s.users.filter(u => !(u.counties || []).length).length) : ''}
+        <button type="button" class="mg-chip" id="manage-county" ${s.cgBusy ? 'disabled' : ''}>${s.cgDone ? '↻ ' : ''}Check county groups</button>
         <button type="button" class="mg-chip" id="manage-refresh">↻ Refresh</button></div>
     </div>
     <div class="mg-list" id="manage-list">${s.loading ? '<div class="mg-empty">Loading users…</div>' : (rows || `<div class="mg-empty">${s.users.length ? 'No users match.' : 'No approved users to show.'}</div>`)}</div>`;
@@ -3235,7 +3262,37 @@ function renderManage() {
   inp.addEventListener('input', () => { s.q = inp.value; const pos = inp.selectionStart; renderManage(); const n = document.getElementById('manage-search'); n.focus(); n.setSelectionRange(pos, pos); });
   body.querySelectorAll('.mg-chip[data-filter]').forEach(b => b.addEventListener('click', () => { s.filter = b.dataset.filter; renderManage(); }));
   document.getElementById('manage-refresh').addEventListener('click', loadManageUsers);
+  const cgb = document.getElementById('manage-county'); if (cgb) cgb.addEventListener('click', checkCountyGroups);
   body.querySelectorAll('.mg-btn[data-u]').forEach(b => b.addEventListener('click', () => manageToggle(b.dataset.u)));
+}
+// Find the "Critical2TN <County> County" groups and see which users belong to one.
+async function checkCountyGroups() {
+  const s = manageState; s.cgBusy = true; s.cgMsg = 'Looking up county groups…'; renderManage();
+  try {
+    const groups = []; let st = 1, guard = 10;
+    while (st > 0 && guard-- > 0) {
+      const j = await agoCall(`${AGO_REST}/community/groups`, { q: 'title:"Critical2TN"', num: '100', start: String(st) }, 'GET');
+      groups.push(...(j.results || [])); st = j.nextStart && j.nextStart > 0 ? j.nextStart : -1;
+    }
+    const skip = /^(statewide|secure mfa|staging|user management|editors?|managers?)/i;
+    const cg = groups.map(g => ({ g, m: /^critical2tn\s+(.+)$/i.exec(String(g.title || '').trim()) }))
+      .filter(x => x.m && !skip.test(x.m[1].trim())).map(x => ({ id: x.g.id, county: x.m[1].trim().replace(/\s+county$/i, '') }));
+    s.users.forEach(u => { u.counties = []; });
+    const byName = new Map(s.users.map(u => [u.username.toLowerCase(), u]));
+    let failed = 0, i = 0;
+    const worker = async () => {
+      while (i < cg.length) {
+        const c = cg[i++]; s.cgMsg = `Checking county groups… ${i}/${cg.length}`; renderManage();
+        try { (await groupMembers(c.id)).forEach(m => { const u = byName.get(String(m.username).toLowerCase()); if (u) u.counties.push(c.county); }); }
+        catch (e) { failed++; }
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    s.cgDone = true; s.cgCount = cg.length;
+    const none = s.users.filter(u => !u.counties.length).length;
+    s.cgMsg = cg.length ? `Checked ${cg.length} county groups${failed ? ` (${failed} couldn’t be read)` : ''}. ${none} of ${s.users.length} users aren’t in a county group (they see statewide).` : 'No groups named “Critical2TN <County>” were found (or you can’t see them).';
+  } catch (err) { s.cgMsg = 'Couldn’t check county groups: ' + err.message; }
+  s.cgBusy = false; renderManage();
 }
 async function manageToggle(username) {
   const s = manageState;
