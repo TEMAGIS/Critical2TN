@@ -31,7 +31,7 @@ window.C2TN_CONFIG = {
 
   // ArcGIS item (type JSON) that stores the shared symbol / colour / zoom choices for the map layers.
   // Leave blank, open Manage > Map layers, and use "Create the settings item"; then paste its ID here.
-  mapSettingsItemId: '',
+  mapSettingsItemId: '9d29d3e459bb43f188d4318f9bb16131',
 
   // ── Linked detail tables (extra survey fields tied to a Critical2TN record by its GlobalID) ──
   // Airports: create the table (Airports/README.md), then paste its URLs below. While `url` is blank the

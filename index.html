@@ -1359,7 +1359,7 @@ function featureToAsset(feature) {
   const lng = p[FIELDS.lng] ?? (feature.geometry ? feature.geometry.x : null);
   const lifelineKey = normaliseLifeline(p[FIELDS.lifeline]);
   return {
-    objectId:    p[FIELDS.objectId],
+    objectId:    p[FIELDS.objectId] ?? (Object.keys(p).find(k => k.toLowerCase() === 'objectid') ? p[Object.keys(p).find(k => k.toLowerCase() === 'objectid')] : undefined),   // some views return the key in lower case
     name:        p[FIELDS.name]         || 'Unnamed asset',
     hsipId:      p[FIELDS.hsipId]       || '',
     address:     p[FIELDS.address]      || '',
@@ -3538,7 +3538,7 @@ function openEditForm(id) {
 }
 async function saveEdit(id) {
   const a = getAsset(id), form = document.getElementById('edit-form'), msg = document.getElementById('edit-msg'), btn = document.getElementById('edit-save');
-  const attrs = { [FIELDS.objectId]: a.objectId }, changes = {};
+  const attrs = { OBJECTID: a.objectId }, changes = {};
   for (const [, key, fkey] of EDIT_FIELDS) {
     const v = form.elements[key].value.trim();
     if (v !== String(a[key] || '')) { attrs[FIELDS[fkey]] = v === '' ? null : v; changes[key] = v; }
@@ -3768,7 +3768,7 @@ async function saveLinked() {
     // keep the Critical2TN record's own "Needs details" flag in step (best effort)
     const ns = attrs.survey_status;
     if (ns && linkedState.layerStatusField && linkedState.layerStatus !== ns) {
-      try { await agoCall(`${CONFIG.serviceUrl}/applyEdits`, { updates: JSON.stringify([{ attributes: { [FIELDS.objectId]: a.objectId, [linkedState.layerStatusField]: ns } }]), rollbackOnFailure: 'true' }); }
+      try { await agoCall(`${CONFIG.serviceUrl}/applyEdits`, { updates: JSON.stringify([{ attributes: { OBJECTID: a.objectId, [linkedState.layerStatusField]: ns } }]), rollbackOnFailure: 'true' }); }
       catch (e) { console.warn('[Critical2TN] could not update survey_status on the main layer', e); }
     }
     reopenDetail(a.id);
