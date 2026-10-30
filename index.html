@@ -109,6 +109,7 @@
     border-radius: 20px; padding: 6px 11px; cursor: pointer; transition: background 0.15s; white-space: nowrap;
     font-weight: 600; min-height: 36px;
   }
+  .header-pill[hidden] { display: none !important; }
   .header-pill:hover { background: rgba(255,255,255,0.28); }
   .header-pill.icon-only { padding: 6px; aspect-ratio: 1; justify-content: center; }
   .search-wrap { position: relative; margin-bottom: 8px; }
@@ -3255,6 +3256,7 @@ async function manageToggle(username) {
   s.busy.delete(username); renderManage();
 }
 function openManage() {
+  if (!ROLES.manager) return;
   const el = document.getElementById('manage-panel'); if (!el) return;
   el.removeAttribute('hidden'); document.body.classList.add('noscroll');
   document.addEventListener('keydown', _manageKey);
