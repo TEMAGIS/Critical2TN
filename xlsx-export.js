@@ -4,9 +4,8 @@
 //  Load it AFTER the main inline <script> in index.html:
 //      <script src="xlsx-export.js"></script>
 //  It adds:
-//   • an "Export" button in the list header, shown only once the list is
-//     narrowed to one county (picked under Filter → County, or a county
-//     account that only sees its own county). It opens the same kind of
+//   • an "Export" button in the list header, shown only once a county has
+//     been picked under Filter → County. It opens the same kind of
 //     panel as "Draw an area → Export", for the list exactly as it's
 //     filtered (sector, county, search): untick sectors, then download
 //     Critical2TN as CSV, Tier II as CSV (when a county is picked), or
@@ -260,12 +259,8 @@
     host.insertBefore(b, document.getElementById('sort-label'));
     updateExportButton();
   }
-  // Show Export only for a single county: one picked in the filter, or a county
-  // account whose list is already just that county (they have no county picker).
-  function exportCountyChosen() {
-    if (activeCounty) return true;
-    return typeof USER_SCOPE !== 'undefined' && USER_SCOPE.type === 'county' && USER_SCOPE.counties.length === 1;
-  }
+  // Show Export only after a county has been picked under Filter → County.
+  function exportCountyChosen() { return !!activeCounty; }
   function updateExportButton() {
     const b = document.getElementById('xlsx-btn'); if (!b) return;
     b.style.display = exportCountyChosen() ? '' : 'none';
