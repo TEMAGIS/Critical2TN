@@ -292,6 +292,19 @@
   .ex-sec2 { flex: 1; background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
   .ex-btns button:disabled { opacity: .4; cursor: not-allowed; }
   .ex-note { font-size: 11px; color: var(--text3); margin: 10px 4px 2px; line-height: 1.4; }
+  /* Sector rows: keep the icon at its own size so the name sits next to it */
+  .ex-sec .sico { flex: 0 0 auto; }
+  /* Wider screens: the export panel is a centered dialog instead of a bottom sheet */
+  @media (min-width: 700px) {
+    #export-content {
+      top: 50%; bottom: auto; border-radius: 16px; max-height: 88vh;
+      padding-bottom: 16px; box-shadow: var(--shadow-lg);
+      opacity: 0; transform: translateY(calc(-50% + 24px));
+      transition: transform 0.25s ease, opacity 0.2s ease;
+    }
+    #export-sheet.open #export-content { transform: translateY(-50%); opacity: 1; }
+    #export-content .sheet-handle { display: none; }
+  }
 
 
   /* ── Manage users + edit record ─────────────────────────────── */
