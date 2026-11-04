@@ -12,23 +12,21 @@
 //   • a "Download Excel" button in the draw-an-area export panel.
 //  Every workbook gets a "Notice" tab with the handling notice, who
 //  exported it, when, and which filters/area were used.
-//
-//  EMBEDDED IN EXPERIENCE BUILDER: the Embed widget sandboxes pages that
-//  aren't on arcgis.com/esri.com and does not allow downloads (or alert
-//  boxes) from inside the frame. So when the app is running in a frame,
-//  the panels explain this and offer to open Critical2TN in its own
-//  browser tab, where downloads work normally.
+//  Excel files are saved the same way as the CSV files (a link click on a
+//  generated file), so they work wherever the CSV downloads work,
+//  including inside Experience Builder.
 // ════════════════════════════════════════════════════════════════
 (function () {
-  const XLSX_SRC = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+  // Excel library: tried in order. cdnjs is the same host the map library already loads from.
+  const XLSX_SRCS = [
+    'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  ];
   const LIST_EXPORT_CAP = 10000;   // max Critical2TN rows from the list (statewide is ~5,300 today)
-  const EMBEDDED = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
-  const STANDALONE_URL = (typeof CONFIG !== 'undefined' && CONFIG.redirectUri) || location.href.split('#')[0];
-  const EMBED_MSG = 'Downloads are blocked inside Experience Builder. Open Critical2TN in its own tab to download. You may need to sign in again there.';
 
   // ── small on-screen message (alert() is blocked inside the Experience Builder frame)
   let toastEl = null, toastTimer = null;
-  function toast(html, withOpenButton) {
+  function toast(html) {
     if (!toastEl) {
       toastEl = document.createElement('div');
       toastEl.setAttribute('role', 'status');
@@ -39,43 +37,36 @@
     }
     toastEl.innerHTML = `<div>${html}</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-        ${withOpenButton ? '<button type="button" data-t="open" style="font:700 13px \'DM Sans\',sans-serif;padding:9px 14px;min-height:40px;border-radius:8px;border:0;background:#ffbf47;color:#000;cursor:pointer">Open in new tab</button>' : ''}
         <button type="button" data-t="close" style="font:700 13px 'DM Sans',sans-serif;padding:9px 14px;min-height:40px;border-radius:8px;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;cursor:pointer">Close</button>
       </div>`;
     toastEl.style.display = 'block';
-    const o = toastEl.querySelector('[data-t="open"]');
-    if (o) o.onclick = () => { openStandalone(); hideToast(); };
     toastEl.querySelector('[data-t="close"]').onclick = hideToast;
-    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, withOpenButton ? 20000 : 8000);
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 10000);
   }
   function hideToast() { if (toastEl) toastEl.style.display = 'none'; }
-  function openStandalone() { window.open(STANDALONE_URL, '_blank', 'noopener'); }
-  // Replaces a panel's download buttons with an explanation + "Open in new tab".
-  function embeddedButtons(btns) {
-    btns.innerHTML = '';
-    const note = document.createElement('div');
-    note.className = 'ex-total over';
-    note.textContent = EMBED_MSG;
-    btns.parentNode.insertBefore(note, btns);
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'ex-pri';
-    b.innerHTML = 'Open in new tab<small>downloads work there</small>';
-    b.addEventListener('click', openStandalone);
-    btns.appendChild(b);
-  }
 
   // ── load SheetJS on demand
   let xlsxPromise = null;
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('loaded but empty'));
+      s.onerror = () => { s.remove(); reject(new Error('blocked or unreachable')); };
+      document.head.appendChild(s);
+    });
+  }
   function loadXlsx() {
     if (window.XLSX) return Promise.resolve(window.XLSX);
     if (xlsxPromise) return xlsxPromise;
-    xlsxPromise = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = XLSX_SRC; s.async = true;
-      s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('the Excel library did not load'));
-      s.onerror = () => { xlsxPromise = null; reject(new Error('couldn’t load the Excel library — check your connection')); };
-      document.head.appendChild(s);
-    });
+    xlsxPromise = (async () => {
+      for (const src of XLSX_SRCS) {
+        try { return await loadScript(src); }
+        catch (e) { console.warn('[Critical2TN] Excel library not loaded from', src, e.message); }
+      }
+      xlsxPromise = null;
+      throw new Error('couldn’t load the Excel library — your network may block it. The CSV downloads still work.');
+    })();
     return xlsxPromise;
   }
 
@@ -128,6 +119,12 @@
   }
   function saveCsv(name, text) {
     const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  function saveXlsx(XLSX, wb, name) {
+    const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true });
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })), a = document.createElement('a');
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
@@ -221,7 +218,6 @@
     const t2cb = body.querySelector('[data-t2]'); if (t2cb) t2cb.addEventListener('change', () => { listX.t2Off = !t2cb.checked; renderListSheet(); });
     const retry = body.querySelector('[data-retry]'); if (retry) retry.addEventListener('click', () => { listX.t2.key = null; loadListT2(); });
     const btns = body.querySelector('.ex-btns');
-    if (EMBEDDED) { embeddedButtons(btns); return; }
     btns.querySelector('[data-x="csv-core"]').addEventListener('click', () => saveCsv(`Critical2TN_${dataStamp()}.csv`, csvText(CORE_COLS, listRows())));
     btns.querySelector('[data-x="csv-t2"]').addEventListener('click', () => saveCsv(`TierII_Hazmat_${dataStamp()}.csv`, csvText(T2_COLS, listT2Rows())));
     const xb = btns.querySelector('[data-x="xlsx"]');
@@ -235,7 +231,7 @@
         ['Critical2TN rows', rows.length],
         ['Tier II rows', t2rows.length],
       ]), 'Notice');
-      XLSX.writeFile(wb, `Critical2TN_${dataStamp()}.xlsx`, { compression: true });
+      saveXlsx(XLSX, wb, `Critical2TN_${dataStamp()}.xlsx`);
     }));
   }
 
@@ -276,13 +272,12 @@
         ['Critical2TN rows', sel.core.length],
         ['Tier II rows', sel.t2.length],
       ]), 'Notice');
-      XLSX.writeFile(wb, `Critical2TN_Area_${dataStamp()}.xlsx`, { compression: true });
+      saveXlsx(XLSX, wb, `Critical2TN_Area_${dataStamp()}.xlsx`);
     });
   }
   function addAreaButton() {
     const btns = document.querySelector('#export-body .ex-btns');
     if (!btns) return;
-    if (EMBEDDED) { embeddedButtons(btns); return; }
     const sel = exportSelection();
     const over = sel.core.length > EXPORT_CAP || sel.t2.length > EXPORT_CAP;
     const b = document.createElement('button');
