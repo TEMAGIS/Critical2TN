@@ -4,7 +4,9 @@
 //  Load it AFTER the main inline <script> in index.html:
 //      <script src="xlsx-export.js"></script>
 //  It adds:
-//   • an "Export" button in the list header. It opens the same kind of
+//   • an "Export" button in the list header, shown only once the list is
+//     narrowed to one county (picked under Filter → County, or a county
+//     account that only sees its own county). It opens the same kind of
 //     panel as "Draw an area → Export", for the list exactly as it's
 //     filtered (sector, county, search): untick sectors, then download
 //     Critical2TN as CSV, Tier II as CSV (when a county is picked), or
@@ -256,7 +258,21 @@
     b.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Export';
     b.addEventListener('click', openListExport);
     host.insertBefore(b, document.getElementById('sort-label'));
+    updateExportButton();
   }
+  // Show Export only for a single county: one picked in the filter, or a county
+  // account whose list is already just that county (they have no county picker).
+  function exportCountyChosen() {
+    if (activeCounty) return true;
+    return typeof USER_SCOPE !== 'undefined' && USER_SCOPE.type === 'county' && USER_SCOPE.counties.length === 1;
+  }
+  function updateExportButton() {
+    const b = document.getElementById('xlsx-btn'); if (!b) return;
+    b.style.display = exportCountyChosen() ? '' : 'none';
+  }
+  // renderList runs after a county is picked or cleared and after the data loads.
+  const originalRenderList = window.renderList;
+  window.renderList = function () { originalRenderList.apply(this, arguments); updateExportButton(); };
 
   // ════════════ 2. DRAWN AREA: add Excel to the existing panel ════════════
   function exportArea(btn) {
