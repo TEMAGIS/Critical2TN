@@ -10,12 +10,46 @@
 //     puts Critical2TN assets and Tier II into one workbook (two tabs).
 //  Every workbook gets a "Notice" tab with the handling notice, who
 //  exported it, when, and which filters/area were used.
-//  The SheetJS library is only downloaded the first time someone
-//  clicks an Excel button.
+//
+//  EMBEDDED IN EXPERIENCE BUILDER: the Embed widget sandboxes pages that
+//  aren't on arcgis.com/esri.com and does not allow downloads (or alert
+//  boxes) from inside the frame. So when the app is running in a frame,
+//  the download buttons explain this and offer to open Critical2TN in
+//  its own browser tab, where downloads work normally.
 // ════════════════════════════════════════════════════════════════
 (function () {
   const XLSX_SRC = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   const LIST_EXPORT_CAP = 10000;   // max rows for the list download (statewide is ~5,300 today)
+  const EMBEDDED = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+  const STANDALONE_URL = (typeof CONFIG !== 'undefined' && CONFIG.redirectUri) || location.href.split('#')[0];
+
+  // ── small on-screen message (alert() is blocked inside the Experience Builder frame)
+  let toastEl = null, toastTimer = null;
+  function toast(html, withOpenButton) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.setAttribute('role', 'status');
+      toastEl.style.cssText = 'position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:6000;' +
+        'width:min(92vw,420px);background:#0f1117;color:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.35);' +
+        "font:500 13px/1.45 'DM Sans',sans-serif;display:none";
+      document.body.appendChild(toastEl);
+    }
+    toastEl.innerHTML = `<div>${html}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        ${withOpenButton ? '<button type="button" data-t="open" style="font:700 13px \'DM Sans\',sans-serif;padding:9px 14px;min-height:40px;border-radius:8px;border:0;background:#ffbf47;color:#000;cursor:pointer">Open in new tab</button>' : ''}
+        <button type="button" data-t="close" style="font:700 13px 'DM Sans',sans-serif;padding:9px 14px;min-height:40px;border-radius:8px;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;cursor:pointer">Close</button>
+      </div>`;
+    toastEl.style.display = 'block';
+    const o = toastEl.querySelector('[data-t="open"]');
+    if (o) o.onclick = () => { openStandalone(); hideToast(); };
+    toastEl.querySelector('[data-t="close"]').onclick = hideToast;
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, withOpenButton ? 20000 : 8000);
+  }
+  function hideToast() { if (toastEl) toastEl.style.display = 'none'; }
+  function openStandalone() { window.open(STANDALONE_URL, '_blank', 'noopener'); }
+  function embeddedNotice() {
+    toast('<b>Downloads are blocked inside Experience Builder.</b><br>Open Critical2TN in its own tab to download. You may need to sign in again there.', true);
+  }
 
   // ── load SheetJS on demand
   let xlsxPromise = null;
@@ -69,7 +103,7 @@
     const html = btn.innerHTML;
     btn.disabled = true; btn.textContent = label;
     try { await fn(); }
-    catch (err) { console.warn('[Critical2TN] Excel export failed', err); alert('Couldn’t create the Excel file: ' + err.message); }
+    catch (err) { console.warn('[Critical2TN] Excel export failed', err); toast('Couldn’t create the Excel file: ' + escapeHtml(err.message)); }
     finally { btn.innerHTML = html; btn.disabled = false; }
   }
 
@@ -82,10 +116,11 @@
     return parts.join('; ') || 'None — everything your account can see';
   }
   function exportList(btn) {
+    if (EMBEDDED) { embeddedNotice(); return; }
     const rows = getFiltered();
-    if (!rows.length) { alert('There’s nothing in the list to download.'); return; }
+    if (!rows.length) { toast('There’s nothing in the list to download.'); return; }
     if (rows.length > LIST_EXPORT_CAP) {
-      alert(`That’s ${rows.length.toLocaleString()} records — the limit is ${LIST_EXPORT_CAP.toLocaleString()}. Filter by sector or county first.`);
+      toast(`That’s ${rows.length.toLocaleString()} records — the limit is ${LIST_EXPORT_CAP.toLocaleString()}. Filter by sector or county first.`);
       return;
     }
     withBusy(btn, 'Preparing…', async () => {
@@ -100,8 +135,8 @@
     if (!host || document.getElementById('xlsx-btn')) return;
     const b = document.createElement('button');
     b.id = 'xlsx-btn'; b.type = 'button'; b.className = 'filter-btn';
-    b.title = 'Download the list as an Excel file';
-    b.setAttribute('aria-label', 'Download the list as an Excel file');
+    b.title = EMBEDDED ? 'Excel download — opens Critical2TN in its own tab' : 'Download the list as an Excel file';
+    b.setAttribute('aria-label', b.title);
     b.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Excel';
     b.addEventListener('click', () => exportList(b));
     host.insertBefore(b, document.getElementById('sort-label'));
@@ -127,6 +162,20 @@
   function addAreaButton() {
     const btns = document.querySelector('#export-body .ex-btns');
     if (!btns) return;
+    if (EMBEDDED) {
+      // The CSV and Excel buttons can't download inside the Experience Builder frame.
+      btns.querySelectorAll('button').forEach(x => { x.disabled = true; });
+      const note = document.createElement('div');
+      note.className = 'ex-total over';
+      note.textContent = 'Downloads are blocked inside Experience Builder. Open Critical2TN in its own tab, draw the area there, and download.';
+      btns.parentNode.insertBefore(note, btns);
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ex-pri';
+      b.innerHTML = 'Open in new tab<small>downloads work there</small>';
+      b.addEventListener('click', openStandalone);
+      btns.appendChild(b);
+      return;
+    }
     const sel = exportSelection();
     const over = sel.core.length > EXPORT_CAP || sel.t2.length > EXPORT_CAP;
     const b = document.createElement('button');
