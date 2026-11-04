@@ -4394,7 +4394,7 @@ function buildCountySelect() {
   const m = new Map(); assets.forEach(a => { const k = countyNorm(a.county); if (k && !m.has(k)) m.set(k, countyShow(a.county)); });
   const list = [...m.entries()].sort((x, y) => x[1].localeCompare(y[1]));
   const sig = list.map(x => x[0]).join('|') + '#' + activeCounty;
-  row.hidden = !list.length && !activeCounty;          // shown even for one county, so county accounts can pick it (needed for Export)
+  row.hidden = list.length < 2 && !activeCounty;
   if (sig === _countySig) return; _countySig = sig;
   sel.innerHTML = `<option value="">All counties</option>` + list.map(([k, n]) => `<option value="${escapeHtml(k)}" ${k === activeCounty ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
 }

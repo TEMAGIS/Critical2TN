@@ -4,8 +4,9 @@
 //  Load it AFTER the main inline <script> in index.html:
 //      <script src="xlsx-export.js"></script>
 //  It adds:
-//   • an "Export" button in the list header, shown only once a county has
-//     been picked under Filter → County. It opens the same kind of
+//   • an "Export" button in the list header, shown once a county has been
+//     picked under Filter → County, and always for an account limited to a
+//     single county (those accounts have no county picker). It opens the same kind of
 //     panel as "Draw an area → Export", for the list exactly as it's
 //     filtered (sector, county, search): untick sectors, then download
 //     Critical2TN as CSV, Tier II as CSV (when a county is picked), or
@@ -132,11 +133,16 @@
   const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
   // ════════════ 1. EXPORT PANEL FOR THE LIST ════════════
+  // The county name when this account is limited to exactly one county, otherwise ''.
+  function singleCountyAccount() {
+    return typeof USER_SCOPE !== 'undefined' && USER_SCOPE.type === 'county' && USER_SCOPE.counties.length === 1 ? USER_SCOPE.counties[0] : '';
+  }
   const listX = { open: false, off: new Set(), t2: { key: null, status: 'idle', rows: [], ctl: null } };
   function listFilterSummary() {
     const parts = [];
     if (activeFilter !== 'all' && SECTORS[activeFilter]) parts.push('Sector: ' + SECTORS[activeFilter].label);
     if (activeCounty) parts.push('County: ' + activeCountyName);
+    else if (singleCountyAccount()) parts.push('County: ' + singleCountyAccount() + ' (your account)');
     if (searchTerm) parts.push('Search: “' + searchTerm + '”');
     return parts.join('; ') || 'None — everything your account can see';
   }
@@ -146,7 +152,10 @@
   // Tier II for the list: only when the list is narrowed to a county (picked in Filter,
   // or the user's own county). Statewide Tier II is far too big for one file.
   async function loadListT2() {
-    const where = refCountyWhere(REF_BY_KEY.tier2);
+    // The picked county; for a one-county account its own county even if "Limit layers to my county" is off.
+    const own = singleCountyAccount();
+    const where = refCountyWhere(REF_BY_KEY.tier2) ||
+      (own ? `UPPER(${REF_BY_KEY.tier2.countyField}) LIKE '${own.toUpperCase().replace(/'/g, "''")}%'` : '');
     if (!where) { if (listX.t2.ctl) listX.t2.ctl.abort(); listX.t2 = { key: '', status: 'nocounty', rows: [], ctl: null }; if (listX.open) renderListSheet(); return; }
     if (listX.t2.key === where && (listX.t2.status === 'ok' || listX.t2.status === 'loading')) return;
     if (listX.t2.ctl) listX.t2.ctl.abort();
@@ -259,8 +268,9 @@
     host.insertBefore(b, document.getElementById('sort-label'));
     updateExportButton();
   }
-  // Show Export only after a county has been picked under Filter → County.
-  function exportCountyChosen() { return !!activeCounty; }
+  // Show Export after a county is picked under Filter → County, or straight away
+  // for an account that only sees one county (its list is already that county).
+  function exportCountyChosen() { return !!activeCounty || !!singleCountyAccount(); }
   function updateExportButton() {
     const b = document.getElementById('xlsx-btn'); if (!b) return;
     b.style.display = exportCountyChosen() ? '' : 'none';
