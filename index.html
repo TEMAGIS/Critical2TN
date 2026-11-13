@@ -4124,8 +4124,12 @@ function openSaveWindow() {
   if (!isInIframe()) return null;
   let w = null;
   try {
+    // Top-right of the browser window — where Edge/Chrome normally show downloads — so the
+    // browser's own Downloads panel (which opens in this pop-up) stays clear of the app.
     const W = 380, H = 200;
-    w = window.open('', SAVE_WIN_NAME, `width=${W},height=${H},left=${Math.max(0, (screen.width - W) / 2)},top=${Math.max(0, (screen.height - H) / 2)},toolbar=0,menubar=0,scrollbars=1`);
+    const left = Math.max(0, (window.screenX || 0) + (window.outerWidth || screen.width) - W - 24);
+    const top = Math.max(0, (window.screenY || 0) + 80);
+    w = window.open('', SAVE_WIN_NAME, `width=${W},height=${H},left=${left},top=${top},toolbar=0,menubar=0,scrollbars=1`);
   } catch { w = null; }
   if (w) _saveWinPage(w, '<h1>Preparing your file\u2026</h1><p>One moment.</p>');
   else console.warn('[Critical2TN] download pop-up was blocked; trying an in-page download');
@@ -4137,14 +4141,16 @@ function saveFile(name, blob, win) {
   if (win === undefined) win = openSaveWindow();
   if (win && !win.closed) {
     try {
-      // URL made here (not in the pop-up) so it outlives the pop-up, which closes itself
-      // once the download has started \u2014 the browser's own Downloads list takes over.
-      const url = URL.createObjectURL(blob);
+      // The URL MUST be made in the pop-up: the browser keeps the embedded frame's
+      // blob URLs apart from a top-level window's, so a URL made here fails there
+      // with "Couldn't download \u2013 Network issue". Closing the pop-up ends the URL,
+      // so wait a few seconds for the browser to pick the file up first; after
+      // that its own Downloads list takes over.
+      const url = win.URL.createObjectURL(blob);
       _saveWinPage(win, `<h1>Downloading\u2026</h1><p>${escapeHtml(name)}</p><p><small>This window closes by itself.</small></p>` +
         `<a id="dl" href="${url}" download="${escapeHtml(name)}" hidden></a>`);
       win.document.getElementById('dl').click();
-      setTimeout(() => closeSaveWindow(win), 1500);
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setTimeout(() => closeSaveWindow(win), 4000);
       return;
     } catch (e) { console.warn('[Critical2TN] download window failed; trying an in-page download', e); closeSaveWindow(win); }
   }
@@ -4537,7 +4543,7 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 //  including inside Experience Builder.
 // ════════════════════════════════════════════════════════════════
 (function () {
-  const VERSION = '2026-11-13.2';                // shown at the bottom of the export panels and in the console
+  const VERSION = '2026-11-13.4';                // shown at the bottom of the export panels and in the console
   console.info('[Critical2TN] xlsx-export.js version', VERSION);
   // Excel library: tried in order. cdnjs is the same host the map library already loads from.
   const XLSX_SRCS = [
