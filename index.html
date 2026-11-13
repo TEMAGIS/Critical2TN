@@ -4124,7 +4124,7 @@ function openSaveWindow() {
   if (!isInIframe()) return null;
   let w = null;
   try {
-    const W = 440, H = 320;
+    const W = 380, H = 200;
     w = window.open('', SAVE_WIN_NAME, `width=${W},height=${H},left=${Math.max(0, (screen.width - W) / 2)},top=${Math.max(0, (screen.height - H) / 2)},toolbar=0,menubar=0,scrollbars=1`);
   } catch { w = null; }
   if (w) _saveWinPage(w, '<h1>Preparing your file\u2026</h1><p>One moment.</p>');
@@ -4137,17 +4137,14 @@ function saveFile(name, blob, win) {
   if (win === undefined) win = openSaveWindow();
   if (win && !win.closed) {
     try {
-      const url = win.URL.createObjectURL(blob);       // lives as long as the download window
-      const kb = blob.size < 1024 * 1024 ? Math.max(1, Math.round(blob.size / 1024)) + ' KB' : (blob.size / 1048576).toFixed(1) + ' MB';
-      const app = location.origin + location.pathname;
-      _saveWinPage(win,
-        `<h1>Your download is ready</h1><p>${escapeHtml(name)} \u00B7 ${kb}</p>` +
-        `<a class="b" id="dl" href="${url}" download="${escapeHtml(name)}">Download</a>` +
-        `<button class="b s" type="button" onclick="window.close()">Close</button>` +
-        `<p style="margin-top:18px"><small>If nothing downloads, your browser or Experience Builder is blocking downloads. ` +
-        `Open Critical2TN in its own browser tab and export from there:<br>${escapeHtml(app)}</small></p>`);
+      // URL made here (not in the pop-up) so it outlives the pop-up, which closes itself
+      // once the download has started \u2014 the browser's own Downloads list takes over.
+      const url = URL.createObjectURL(blob);
+      _saveWinPage(win, `<h1>Downloading\u2026</h1><p>${escapeHtml(name)}</p><p><small>This window closes by itself.</small></p>` +
+        `<a id="dl" href="${url}" download="${escapeHtml(name)}" hidden></a>`);
       win.document.getElementById('dl').click();
-      win.focus();
+      setTimeout(() => closeSaveWindow(win), 1500);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
       return;
     } catch (e) { console.warn('[Critical2TN] download window failed; trying an in-page download', e); closeSaveWindow(win); }
   }
@@ -4540,7 +4537,7 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 //  including inside Experience Builder.
 // ════════════════════════════════════════════════════════════════
 (function () {
-  const VERSION = '2026-11-13.1';                // shown at the bottom of the export panels and in the console
+  const VERSION = '2026-11-13.2';                // shown at the bottom of the export panels and in the console
   console.info('[Critical2TN] xlsx-export.js version', VERSION);
   // Excel library: tried in order. cdnjs is the same host the map library already loads from.
   const XLSX_SRCS = [
