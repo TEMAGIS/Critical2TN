@@ -3117,9 +3117,7 @@ function exportCsv(kind) {
   if (!n || n > EXPORT_CAP) return;
   const d = new Date(), pad = x => String(x).padStart(2, '0');
   const name = `${kind === 't2' ? 'TierII_Hazmat' : 'Critical2TN'}_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.csv`;
-  const url = URL.createObjectURL(new Blob([buildCsv(kind)], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a');
-  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  saveFile(name, new Blob([buildCsv(kind)], { type: 'text/csv;charset=utf-8' }));
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -4090,8 +4088,68 @@ function csvObjects(text) {
   return { headers: headers.map(h => h.toLowerCase()), objs };
 }
 function dataSave(name, text) {
-  const blob = new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
-  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+  saveFile(name, new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' }));
+}
+
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 FILE DOWNLOADS (standalone + embedded) \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+// Experience Builder's Embed widget sandboxes its iframe WITHOUT
+// "allow-downloads", so a link click on a generated file is silently
+// blocked there (console: "Download is disallowed. The frame initiating
+// or instantiating the download is sandboxed"). Pop-ups ARE allowed \u2014
+// sign-in already uses one \u2014 so when embedded we hand the file to a
+// small window of our own and save it from there.
+//
+// openSaveWindow() must run in the same tick as the user's click (before
+// any await) or the browser blocks the pop-up. Pass the result to
+// saveFile() once the file is ready.
+const SAVE_WIN_NAME = 'critical2tn_download';
+function _saveWinPage(w, inner) {
+  try {
+    w.document.open();
+    w.document.write('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>Critical2TN download</title><style>' +
+      "body{margin:0;padding:28px 24px;font:15px/1.5 'DM Sans',system-ui,sans-serif;background:#f0f2f5;color:#0f1117;text-align:center}" +
+      'h1{font-size:17px;margin:0 0 6px;color:#002868}p{margin:6px 0;color:#444c5c}small{color:#4f5665;font-size:12px;word-break:break-all}' +
+      '.b{display:inline-block;margin:14px 6px 4px;padding:11px 18px;min-height:44px;border-radius:8px;border:0;background:#002868;color:#fff;font:700 14px inherit;text-decoration:none;cursor:pointer}' +
+      '.b.s{background:transparent;color:#002868;border:1px solid #c5cbd6}a:focus,button:focus{outline:3px solid #ffbf47;outline-offset:2px}' +
+      '</style></head><body>' + inner + '</body></html>');
+    w.document.close();
+  } catch (e) { console.warn('[Critical2TN] download window not writable', e); }
+}
+function openSaveWindow() {
+  if (!isInIframe()) return null;
+  let w = null;
+  try {
+    const W = 440, H = 320;
+    w = window.open('', SAVE_WIN_NAME, `width=${W},height=${H},left=${Math.max(0, (screen.width - W) / 2)},top=${Math.max(0, (screen.height - H) / 2)},toolbar=0,menubar=0,scrollbars=1`);
+  } catch { w = null; }
+  if (w) _saveWinPage(w, '<h1>Preparing your file\u2026</h1><p>One moment.</p>');
+  else console.warn('[Critical2TN] download pop-up was blocked; trying an in-page download');
+  return w;
+}
+function closeSaveWindow(w) { try { if (w && !w.closed) w.close(); } catch {} }
+// win: from openSaveWindow(); omit it for downloads that happen right on the click.
+function saveFile(name, blob, win) {
+  if (win === undefined) win = openSaveWindow();
+  if (win && !win.closed) {
+    try {
+      const url = win.URL.createObjectURL(blob);       // lives as long as the download window
+      const kb = blob.size < 1024 * 1024 ? Math.max(1, Math.round(blob.size / 1024)) + ' KB' : (blob.size / 1048576).toFixed(1) + ' MB';
+      const app = location.origin + location.pathname;
+      _saveWinPage(win,
+        `<h1>Your download is ready</h1><p>${escapeHtml(name)} \u00B7 ${kb}</p>` +
+        `<a class="b" id="dl" href="${url}" download="${escapeHtml(name)}">Download</a>` +
+        `<button class="b s" type="button" onclick="window.close()">Close</button>` +
+        `<p style="margin-top:18px"><small>If nothing downloads, your browser or Experience Builder is blocking downloads. ` +
+        `Open Critical2TN in its own browser tab and export from there:<br>${escapeHtml(app)}</small></p>`);
+      win.document.getElementById('dl').click();
+      win.focus();
+      return;
+    } catch (e) { console.warn('[Critical2TN] download window failed; trying an in-page download', e); closeSaveWindow(win); }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 const dataStamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
 const dataIsDate = f => f && f.type === 'esriFieldTypeDate';
@@ -4478,7 +4536,7 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 //  including inside Experience Builder.
 // ════════════════════════════════════════════════════════════════
 (function () {
-  const VERSION = '2026-11-05.8';                // shown at the bottom of the export panels and in the console
+  const VERSION = '2026-11-13.1';                // shown at the bottom of the export panels and in the console
   console.info('[Critical2TN] xlsx-export.js version', VERSION);
   // Excel library: tried in order. cdnjs is the same host the map library already loads from.
   const XLSX_SRCS = [
@@ -4566,11 +4624,13 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
     wb.Props = { Title: 'Critical2TN export', Author: (TOKEN && TOKEN.username) || '' };
     return wb;
   }
+  // Opens the download window (embedded only) right on the click, before any await,
+  // so the pop-up isn't blocked; fn gets it to pass on to saveXlsx.
   async function withBusy(btn, label, fn) {
-    const html = btn.innerHTML;
+    const html = btn.innerHTML, win = openSaveWindow();
     btn.disabled = true; btn.textContent = label;
-    try { await fn(); }
-    catch (err) { console.warn('[Critical2TN] export failed', err); toast('Couldn’t create the file: ' + escapeHtml(err.message)); }
+    try { await fn(win); }
+    catch (err) { closeSaveWindow(win); console.warn('[Critical2TN] export failed', err); toast('Couldn’t create the file: ' + escapeHtml(err.message)); }
     finally { btn.innerHTML = html; btn.disabled = false; }
   }
   // Same columns and safety rules as the area CSV export in index.html.
@@ -4580,16 +4640,13 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
     const lines = rows.map(r => cols.map(c => csvCell(c[1](r), c[2] !== false)).concat([csvCell(who), csvCell(now), csvCell(EXPORT_NOTICE)]).join(','));
     return '\uFEFF' + [head, ...lines].join('\r\n') + '\r\n';
   }
+  // saveFile() (main script) handles the Experience Builder iframe, where in-page downloads are blocked.
   function saveCsv(name, text) {
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a');
-    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    saveFile(name, new Blob([text], { type: 'text/csv;charset=utf-8' }));
   }
-  function saveXlsx(XLSX, wb, name) {
+  function saveXlsx(XLSX, wb, name, win) {
     const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true });
-    const url = URL.createObjectURL(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })), a = document.createElement('a');
-    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    saveFile(name, new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), win || null);
   }
   const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
@@ -4692,7 +4749,7 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
     btns.querySelector('[data-x="csv-core"]').addEventListener('click', () => saveCsv(`Critical2TN_${dataStamp()}.csv`, csvText(CORE_COLS, listRows())));
     btns.querySelector('[data-x="csv-t2"]').addEventListener('click', () => saveCsv(`TierII_Hazmat_${dataStamp()}.csv`, csvText(T2_COLS, listT2Rows())));
     const xb = btns.querySelector('[data-x="xlsx"]');
-    xb.addEventListener('click', () => withBusy(xb, 'Preparing…', async () => {
+    xb.addEventListener('click', () => withBusy(xb, 'Preparing…', async (win) => {
       const rows = listRows(), t2rows = listT2Rows(), XLSX = await loadXlsx(), wb = newWorkbook(XLSX);
       if (rows.length) XLSX.utils.book_append_sheet(wb, dataSheet(XLSX, CORE_COLS, rows), 'Critical2TN');
       if (t2rows.length) XLSX.utils.book_append_sheet(wb, dataSheet(XLSX, T2_COLS, t2rows), 'Tier II Hazmat');
@@ -4702,7 +4759,7 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
         ['Critical2TN rows', rows.length],
         ['Tier II rows', t2rows.length],
       ]), 'Notice');
-      saveXlsx(XLSX, wb, `Critical2TN_${dataStamp()}.xlsx`);
+      saveXlsx(XLSX, wb, `Critical2TN_${dataStamp()}.xlsx`, win);
     }));
   }
 
@@ -4744,7 +4801,7 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
   function exportArea(btn) {
     const sel = exportSelection();
     if (!sel.total || sel.core.length > EXPORT_CAP || sel.t2.length > EXPORT_CAP) return;
-    withBusy(btn, 'Preparing…', async () => {
+    withBusy(btn, 'Preparing…', async (win) => {
       const XLSX = await loadXlsx(), wb = newWorkbook(XLSX);
       if (sel.core.length) XLSX.utils.book_append_sheet(wb, dataSheet(XLSX, CORE_COLS, sel.core), 'Critical2TN');
       if (sel.t2.length) XLSX.utils.book_append_sheet(wb, dataSheet(XLSX, T2_COLS, sel.t2), 'Tier II Hazmat');
@@ -4754,7 +4811,7 @@ window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
         ['Critical2TN rows', sel.core.length],
         ['Tier II rows', sel.t2.length],
       ]), 'Notice');
-      saveXlsx(XLSX, wb, `Critical2TN_Area_${dataStamp()}.xlsx`);
+      saveXlsx(XLSX, wb, `Critical2TN_Area_${dataStamp()}.xlsx`, win);
     });
   }
   function addAreaButton() {
